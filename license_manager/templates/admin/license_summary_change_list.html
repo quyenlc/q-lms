@@ -1,0 +1,59 @@
+{% extends "admin/change_list.html" %}
+{% block content_title %}
+    <h1> Licenses Summary </h1>
+{% endblock %}
+
+{% block object-tools %}
+{% endblock %}
+
+{% block result_list %}
+    <div class="results">
+        <table>
+            <thead>
+                <tr>
+                    <th>
+                        <div class="text">
+                            <a href="#">Software Family</a>
+                        </div>
+                    </th>
+                    <th>
+                        <div class="text">
+                            <a href="#">Products</a>
+                        </div>
+                    </th>
+                    <th>
+                        <div class="text">
+                            <a href="#">Total License</a>
+                        </div>
+                    </th>
+                    <th>
+                        <div class="text">
+                            <a href="#">Used License</a>
+                        </div>
+                    </th>
+                    <th>
+                        <div class="text">
+                            <a href="#">Remaining License</a>
+                        </div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for key, value in summary %}
+                <tr class="{% cycle 'row1' 'row2' %}">
+                    <td> {{ value.software_family }} </td>
+                    <td>
+                        {% for sw in value.softwares %}
+                            {{ sw.get_full_name }}<br>
+                        {% endfor %}
+                    </td>
+                    <td> {{ value.total }} </td>
+                    <td> {{ value.used_total }} </td>
+                    <td> {{ value.remaining }} </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}
+{% block pagination %}{% endblock %}
