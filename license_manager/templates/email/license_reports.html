@@ -1,0 +1,194 @@
+<html>
+    <head>
+        <style>
+            body {
+                font-family: "Roboto", "Lucida Grande", Verdana, Arial, sans-serif;
+            }
+
+            .report-header {
+                font-weight: 200;
+                color: #666;
+            }
+
+            .section-header {
+                text-transform: capitalize;
+                padding: 5px;
+                background: #79aec8;
+                color: white;
+                border-radius: 3px;
+            }
+
+            .report-table {
+                width: 100%;
+                border-collapse: collapse;
+                border-color: #ccc;
+            }
+
+            .report-table thead th {
+                text-align: left;
+                text-transform: uppercase;
+                background: #f6f6f6;
+                border-top: 1px solid #eee;
+                border-bottom: 1px solid #eee;
+                color: #666;
+                font-size: 11px;
+            }
+
+            .report-table td, th {
+                padding: 8px;
+                border-bottom: 1px solid #eee;
+                font-size: 13px;
+            }
+
+            .row1 {
+                background: #fff;
+            }
+
+            .row2 {
+                background: #f9f9f9;
+            }
+
+            .section {
+                padding-bottom: 2em;
+            }
+        </style>
+    </head>
+    <body>
+        <h1 class="report-header">License Reports - {{ today }}</h1>
+        <div class="section">
+            <h3 class="section-header">Expiring Licenses</h3>
+            {% if expiring_licenses %}
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>
+                            #
+                        </th>
+                        <th>
+                            Description
+                        </th>
+                        <th>
+                            Users
+                        </th>
+                        <th>
+                            Total License
+                        </th>
+                        <th>
+                            Used License
+                        </th>
+                        <th>
+                            Ended date
+                        </th>
+                        <th>
+                            Remaining days
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lic in expiring_licenses %}
+                    <tr class="{% cycle 'row1' 'row2' %}">
+                        <td> {{ forloop.counter }} </td>
+                        <td> {{ lic.description }} </td>
+                        <td>
+                            {% for user in lic.users.all %}
+                            {{ user.username }}<br>
+                            {% endfor %}
+                        </td>
+                        <td> {{ lic.total }} </td>
+                        <td> {{ lic.used_total }} </td>
+                        <td> {{ lic.ended_date }} </td>
+                        <td> {{ lic.get_remaining_days }} </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            No expiring licenses.
+            {% endif %}
+        </div>
+        <div class="section">
+            <h3 class="section-header">Available licenses</h3>
+            {% if available_licenses %}
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>
+                            #
+                        </th>
+                        <th>
+                            Description
+                        </th>
+                        <th>
+                            Licensed Products
+                        </th>
+                        <th>
+                            Total License
+                        </th>
+                        <th>
+                            Used License
+                        </th>
+                        <th>
+                            Remaining License
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lic in available_licenses %}
+                    <tr class="{% cycle 'row1' 'row2' %}">
+                        <td> {{ forloop.counter }} </td>
+                        <td> {{ lic.description }} </td>
+                        <td>
+                            {% for sw in lic.softwares.all %}
+                                {{ sw.get_full_name }}<br>
+                            {% endfor %}
+                        </td>
+                        <td> {{ lic.total }} </td>
+                        <td> {{ lic.used_total }} </td>
+                        <td> {{ lic.remaining }} </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            All licenses are used.
+            {% endif %}
+        </div>
+        {% if unlicensed_softwares %}
+        <div class="section">
+            <h3 class="section-header">Softwares using without licenses</h3>
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>
+                            #
+                        </th>
+                        <th>
+                            Software
+                        </th>
+                        <th>
+                            Users
+                        </th>
+                        <th>
+                            Count
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for key, value in unlicensed_softwares %}
+                    <tr class="{% cycle 'row1' 'row2' %}">
+                        <td> {{ forloop.counter }} </td>
+                        <td> {{ value.software }} </td>
+                        <td>
+                            {% for user in value.users %}
+                            {{ user }}<br>
+                            {% endfor %}
+                        </td>
+                        <td> {{ value.count }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </body>
+</html>

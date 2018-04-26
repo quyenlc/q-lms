@@ -147,5 +147,8 @@ ADMIN_TOOLS_MENU = 'license_manager.menu.CustomMenu'
 ADMIN_TOOLS_INDEX_DASHBOARD = 'license_manager.dashboard.CustomIndexDashboard'
 ADMIN_TOOLS_APP_INDEX_DASHBOARD = 'license_manager.dashboard.CustomAppIndexDashboard'
 
+EMAIL_HOST = '172.21.149.150'
+EMAIL_USE_TLS = False
+
 # Debug toolbar
 INTERNAL_IPS = ['127.0.0.1']

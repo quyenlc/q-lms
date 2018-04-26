@@ -3,6 +3,7 @@ from django.db import transaction
 from django.db import IntegrityError
 from django.contrib.auth.models import User
 from django.utils.html import format_html
+from django.utils import timezone
 
 
 class Supplier(models.Model):
@@ -128,6 +129,12 @@ class License(models.Model):
                 summary[skey]['remaining'] = summary[skey]['total'] - summary[skey]['used_total']
         return sorted(summary.items())
 
+    def get_remaining_days(self):
+        days = (self.ended_date - timezone.now().date()).days
+        if days < 0:
+            days = 0
+        return days
+
     def save(self, *args, **kwargs):
         self.description = "{} {} License".format(
             self.software_family.name, self.get_license_type_display())
@@ -182,6 +189,21 @@ class LicenseAssignment(models.Model):
     def __init__(self, *args, **kwargs):
         super(LicenseAssignment, self).__init__(*args, **kwargs)
         self.__original_license = self.license
+
+    def get_unlicensed_softwares():
+        summary = {}
+        qs = LicenseAssignment.objects.filter(license__isnull=True)
+        for la in qs:
+            if la.software_id not in summary:
+                summary[la.software_id] = {
+                    'software': la.software.get_full_name(),
+                    'users': [la.user.username],
+                    'count': 1,
+                }
+            else:
+                summary[la.software_id]['users'].append(la.user.username),
+                summary[la.software_id]['count'] += 1
+        return sorted(summary.items())
 
     def save(self, *args, **kwargs):
         with transaction.atomic():
