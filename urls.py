@@ -18,8 +18,6 @@ from django.urls import include, path
 from django.conf import settings
 from django.conf.urls.static import static
 
-from cruds_adminlte.urls import crud_for_app
-
 from license_manager.views import LicenseAutocomplete, LicensedSoftwareAutocomplete
 
 urlpatterns = [
@@ -28,8 +26,6 @@ urlpatterns = [
     path('license-autocomplete/', LicenseAutocomplete.as_view(), name='license-autocomplete'),
     path('licensedsoftware-autocomplete/', LicensedSoftwareAutocomplete.as_view(), name='licensedsoftware-autocomplete'),
 ]
-urlpatterns += crud_for_app('license_manager')
-urlpatterns += crud_for_app('auth')
 
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL,
