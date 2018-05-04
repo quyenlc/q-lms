@@ -106,7 +106,7 @@ class License(models.Model):
     get_display_softwares.short_description = "Products"
     get_display_softwares.allow_tags = True
 
-    def get_summary(self, queryset=None):
+    def get_license_summary(queryset=None):
         if not queryset:
             queryset = License.objects.all()
         summary = {}
@@ -188,7 +188,7 @@ class LicenseAssignment(models.Model):
 
     def __init__(self, *args, **kwargs):
         super(LicenseAssignment, self).__init__(*args, **kwargs)
-        self.__original_license = self.license
+        self.original_license = self.license
 
     def get_unlicensed_softwares():
         summary = {}
@@ -208,11 +208,10 @@ class LicenseAssignment(models.Model):
     def save(self, *args, **kwargs):
         with transaction.atomic():
             super(LicenseAssignment, self).save(*args, **kwargs)
-            if self.__original_license != self.license:
-                if self.__original_license:
-                    self.__original_license.update_used_total()
-                if self.license:
-                    self.license.update_used_total()
+            if self.license:
+                self.license.update_used_total()
+            if self.original_license != self.license and self.original_license:
+                self.original_license.update_used_total()
 
     def delete(self):
         with transaction.atomic():

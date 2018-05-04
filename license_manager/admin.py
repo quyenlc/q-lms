@@ -218,7 +218,7 @@ class LicenseSummaryAdmin(admin.ModelAdmin):
         except (AttributeError, KeyError):
             return response
 
-        response.context_data['summary'] = License.get_summary(qs)
+        response.context_data['license_summary'] = License.get_license_summary(qs)
         return response
 
 admin.site.register(Supplier, SupplierAdmin)
