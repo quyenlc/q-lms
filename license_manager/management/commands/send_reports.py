@@ -39,6 +39,9 @@ class Command(BaseCommand):
             ended_date__lt=warning_date)
         available_licenses = (License.objects.annotate(remaining=F('total') - F('used_total'))
                                              .filter(total__gt=F('used_total'))
+                                             .exclude(
+                                                license_type=License.LICENSE_SUBSCRIPTION,
+                                                ended_date__lt=timezone.now().date())
                                              .order_by('description'))
         if options['unlicensed']:
             unlicensed_softwares = LicenseAssignment.get_unlicensed_softwares()
