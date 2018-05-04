@@ -1,9 +1,13 @@
 from django import forms
+from django.http import HttpResponseRedirect
+from django.urls import path, reverse
 from django.contrib import admin
-# from django.contrib import messages
-# from django.contrib.auth.models import User
-# from django.contrib.admin.widgets import FilteredSelectMultiple
-from django.db.models import Count, Sum
+from django.contrib import messages
+from django.db.models import F, Q
+from django.contrib.auth.models import User
+from django.contrib.admin.widgets import FilteredSelectMultiple
+from django.core.exceptions import PermissionDenied
+from django.template.response import SimpleTemplateResponse, TemplateResponse
 
 from dal import autocomplete
 from dal import forward
@@ -12,6 +16,7 @@ from django_admin_listfilter_dropdown.filters import RelatedDropdownFilter
 from .models import (
     Supplier, SoftwareFamily, Software,
     License, LicensedSoftware, LicenseAssignment, LicenseSummary)
+from .actions import delete_license_assignments
 
 
 class SupplierAdmin(admin.ModelAdmin):
@@ -115,11 +120,12 @@ class LicenseForm(forms.ModelForm):
 
 
 class LicenseAdmin(admin.ModelAdmin):
+    save_as = True
     form = LicenseForm
     inlines = [LicensedSoftwareInline]
     list_display = [
         'description', 'get_display_softwares',
-        'license_number', 'total', 'used_total',
+        'license_number', 'total', 'linked_used_total',
         'supplier', 'purchased_date', 'started_date', 'ended_date']
     exclude = ['description']
     readonly_fields = ['description', 'used_total']
@@ -182,15 +188,38 @@ class LicenseAssignmentForm(forms.ModelForm):
         )
 
 
+class LicenseBulkAssignForm(forms.Form):
+    users = forms.ModelMultipleChoiceField(
+        queryset=User.objects.all(),
+        widget=FilteredSelectMultiple(
+            "users",
+            is_stacked=False,
+        )
+    )
+    softwares = forms.ModelMultipleChoiceField(
+        queryset=Software.objects.all(),
+        widget=FilteredSelectMultiple(
+            "softwares",
+            is_stacked=False,
+        )
+    )
+
+    class Media:
+        css = {
+            'all': ('admin/css/widgets.css',),
+        }
+
+
 class LicenseAssignmentAdmin(admin.ModelAdmin):
     form = LicenseAssignmentForm
-    list_display = ['id', 'user', 'software', 'license', 'get_serial_key']
+    list_display = ['id', 'user', 'software', 'linked_license', 'get_serial_key']
     list_filter = (
         ('user', RelatedDropdownFilter),
         ('software__software_family', RelatedDropdownFilter),
         ('software', RelatedDropdownFilter),
         ('license', RelatedDropdownFilter),
     )
+    actions = [delete_license_assignments]
 
     def get_serial_key(self, obj):
         if obj.license:
@@ -199,6 +228,105 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
         else:
             return None
     get_serial_key.short_description = "Serial Key"
+
+    def get_urls(self):
+        info = self.model._meta.app_label, self.model._meta.model_name
+        urlpatterns = super(LicenseAssignmentAdmin, self).get_urls()
+        my_urls = [
+            path('bulk_assign/', self.admin_site.admin_view(self.bulk_assign_view), name='%s_%s_bulk_assign' % info)
+        ]
+        return my_urls + urlpatterns
+
+    def get_actions(self, request):
+        actions = super(LicenseAssignmentAdmin, self).get_actions(request)
+        if 'delete_selected' in actions:
+            del actions['delete_selected']
+        return actions
+
+    def bulk_assign_view(self, request):
+        if not self.has_add_permission(request):
+            raise PermissionDenied
+        opts = self.model._meta
+        if request.method != 'POST':
+            form = LicenseBulkAssignForm()
+        else:
+            form = LicenseBulkAssignForm(request.POST)
+            if form.is_valid():
+                licenses = {}
+                for sw in form.cleaned_data['softwares']:
+                    licenses[sw.id] = list(License.objects.annotate(remaining=F('total') - F('used_total'))
+                                                      .filter(softwares=sw, remaining__gt=0)
+                                                      .values('id', 'description', 'remaining'))
+                assignments = []
+                for user in form.cleaned_data['users']:
+                    for sw in form.cleaned_data['softwares']:
+                        license = None
+                        if licenses[sw.id]:
+                            license = licenses[sw.id][0]
+                            if license['remaining'] > 0:
+                                license['remaining'] -= 1
+                            if license['remaining'] == 0:
+                                del licenses[sw.id][0]
+                        assignments.append({
+                            'user': user,
+                            'software': sw,
+                            'license': license})
+
+                if '_confirmed' in request.POST:
+                    for assignment in assignments:
+                        license_id = None
+                        if assignment['license']:
+                            license_id = assignment['license']['id']
+                        obj = LicenseAssignment(
+                            user_id=assignment['user'].pk,
+                            software_id=assignment['software'].pk,
+                            license_id=license_id,
+                        )
+                        obj.save()
+                    post_url = reverse(
+                        'admin:%s_%s_changelist' % (opts.app_label, opts.model_name),
+                        current_app=self.admin_site.name,
+                    )
+                    self.message_user(
+                        request,
+                        "Successfully assigned softwares and licenses for users",
+                        messages.SUCCESS
+                    )
+                    return HttpResponseRedirect(post_url)
+                else:
+                    context = {
+                        **self.admin_site.each_context(request),
+                        'users': form.cleaned_data['users'],
+                        'softwares': form.cleaned_data['softwares'],
+                        'assignments': assignments,
+                        'opts': opts,
+                        'media': self.media,
+                        'has_change_permission': self.has_change_permission(request, None),
+                    }
+                    return TemplateResponse(
+                        request,
+                        "admin/%s/%s/bulk_assign_confirmation.html" % (opts.app_label, opts.model_name),
+                        context
+                    )
+
+        adminForm = admin.helpers.AdminForm(
+            form=form,
+            fieldsets=[(None, {'fields': ('users', 'softwares',)})],
+            prepopulated_fields={},
+            model_admin=self)
+        media = self.media + adminForm.media
+        context = {
+            **self.admin_site.each_context(request),
+            'adminform': adminForm,
+            'opts': opts,
+            'media': media,
+            'has_change_permission': self.has_change_permission(request, None),
+        }
+        return TemplateResponse(
+            request,
+            "admin/%s/%s/bulk_assign.html" % (opts.app_label, opts.model_name),
+            context
+        )
 
 
 class LicenseSummaryAdmin(admin.ModelAdmin):
