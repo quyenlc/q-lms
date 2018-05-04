@@ -4,6 +4,7 @@ from django.db import IntegrityError
 from django.contrib.auth.models import User
 from django.utils.html import format_html
 from django.utils import timezone
+from django.urls import reverse
 
 
 class Supplier(models.Model):
@@ -135,8 +136,27 @@ class License(models.Model):
             days = 0
         return days
 
+    def linked_used_total(self):
+        if self.used_total == 0:
+            return 0
+        color = 'limegreen'
+        if self.used_total == self.total:
+            color = 'red'
+        opts = self._meta
+        url = reverse(
+            'admin:%s_%s_changelist' %
+            (opts.app_label, 'licenseassignment')
+        )
+        url += '?license__id__exact=%d' % self.pk
+        return format_html(
+            '<a href="{}" style="color: {}" title="Click here to see the users using this license."><strong>{}</strong></a>',
+            url, color, self.used_total
+        )
+    linked_used_total.short_description = 'used total'
+    linked_used_total.admin_order_field = 'used_total'
+
     def save(self, *args, **kwargs):
-        self.description = "{} {} License".format(
+        self.description = "{} {} Licenses".format(
             self.software_family.name, self.get_license_type_display())
         if self.license_type == self.LICENSE_OEM:
             self.description += " for {}".format(self.oem_device)
@@ -219,9 +239,19 @@ class LicenseAssignment(models.Model):
             if self.license:
                 self.license.update_used_total()
 
+    def linked_license(self):
+        url = reverse(
+            'admin:%s_%s_changelist' %
+            (self._meta.app_label, 'license'),
+            # args=[self.license_id]
+        )
+        url += '?pk__exact=%d' % self.license_id
+        return format_html('<a href="{}">{}</a>', url, self.license)
+
     def __str__(self):
         return "{} for {}".format(self.software.get_full_name(), self.user.get_username())
-
+    linked_license.short_description = 'license'
+    linked_license.admin_order_field = 'license'
 
 class LicenseSummary(License):
     class Meta:
