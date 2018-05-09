@@ -1,0 +1,8 @@
+django>=2.0.0
+django-autocomplete-light>=3.2.10
+django-admin-list-filter-dropdown>=1.0.1
+django-admin-tools>=0.8.1
+django-debug-toolbar
+google-auth
+google-auth-httplib2
+google-api-python-client
