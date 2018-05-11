@@ -253,6 +253,7 @@ class LicenseAssignment(models.Model):
     linked_license.short_description = 'license'
     linked_license.admin_order_field = 'license'
 
+
 class LicenseSummary(License):
     class Meta:
         proxy = True

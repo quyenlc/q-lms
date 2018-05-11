@@ -127,12 +127,14 @@ class LicenseAdmin(admin.ModelAdmin):
         'description', 'get_display_softwares',
         'license_number', 'total', 'linked_used_total',
         'supplier', 'purchased_date', 'started_date', 'ended_date']
+    list_select_related = ['supplier']
     exclude = ['description']
     readonly_fields = ['description', 'used_total']
     list_filter = (
         ('software_family', RelatedDropdownFilter),
         'license_type', 'ended_date', 'started_date',
     )
+    autocomplete_fields = ['supplier', 'software_family']
 
     def get_fields(self, request, obj):
         if obj:
@@ -213,6 +215,7 @@ class LicenseBulkAssignForm(forms.Form):
 class LicenseAssignmentAdmin(admin.ModelAdmin):
     form = LicenseAssignmentForm
     list_display = ['id', 'user', 'software', 'linked_license', 'get_serial_key']
+    list_select_related = ['user', 'software', 'license']
     list_filter = (
         ('user', RelatedDropdownFilter),
         ('software__software_family', RelatedDropdownFilter),
