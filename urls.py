@@ -25,6 +25,7 @@ urlpatterns = [
     path('admin_tools/', include('admin_tools.urls')),
     path('license-autocomplete/', LicenseAutocomplete.as_view(), name='license-autocomplete'),
     path('licensedsoftware-autocomplete/', LicensedSoftwareAutocomplete.as_view(), name='licensedsoftware-autocomplete'),
+    path('account/', include('social_django.urls')),
 ]
 
 if settings.DEBUG:
@@ -35,5 +36,5 @@ if settings.DEBUG:
         path('__debug__/', include(debug_toolbar.urls)),
     ] + urlpatterns
 
-admin.site.site_header = 'License manager'
-admin.site.site_title = 'License manager'
+admin.site.site_header = 'Punch Entertainment'
+admin.site.site_title = 'Punch Entertainment'
