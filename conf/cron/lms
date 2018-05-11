@@ -1,0 +1,4 @@
+SHELL=/bin/bash
+
+* */6 * * *  root cd /code && python3 manage.py sync-gsuite-users -u tung.vu@punch.vn >/tmp/sync-gsuite-users.log 2>&1
+0 9 * * 3  root cd /code && python3 manage.py send-reports --to tung.vu@punch.vn -u >/tmp/send-reports.log 2>&1

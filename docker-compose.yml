@@ -1,0 +1,28 @@
+version: '3'
+
+services:
+  db:
+    container_name: lms_db
+    image: postgres
+    volumes:
+      - ./db:/var/lib/postgresql/data
+    restart: always
+  web:
+    container_name: lms_web
+    build: .
+    command: ["./bin/wait-for-it.sh", "lms_db:5432", "--", "bash", "./bin/run.sh"]
+    volumes:
+      - ./src/:/code
+    depends_on:
+      - "db"
+    restart: always
+  proxy:
+    image: nginx:latest
+    container_name: lms_proxy
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./conf/nginx:/etc/nginx/conf.d
+      - ./static:/static
+    depends_on:
+      - "web"
