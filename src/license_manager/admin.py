@@ -186,7 +186,7 @@ class LicenseAssignmentForm(forms.ModelForm):
 
     class Media:
         js = (
-            'linked_data.js',
+            'license_manager/linked_data.js',
         )
 
 
