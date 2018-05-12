@@ -1,6 +1,7 @@
 from django import forms
 from django.http import HttpResponseRedirect
-from django.urls import path, reverse
+from django.core.urlresolvers import reverse
+from django.conf.urls import url
 from django.contrib import admin
 from django.contrib import messages
 from django.db.models import F, Q
@@ -236,7 +237,7 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
         info = self.model._meta.app_label, self.model._meta.model_name
         urlpatterns = super(LicenseAssignmentAdmin, self).get_urls()
         my_urls = [
-            path('bulk_assign/', self.admin_site.admin_view(self.bulk_assign_view), name='%s_%s_bulk_assign' % info)
+            url(r'^bulk_assign/', self.admin_site.admin_view(self.bulk_assign_view), name='%s_%s_bulk_assign' % info)
         ]
         return my_urls + urlpatterns
 

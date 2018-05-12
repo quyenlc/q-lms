@@ -1,6 +1,6 @@
-from django.urls import path
+from django.conf.urls import url
 from . import views
 
 urlpatterns = [
-    path('license-autocomplete/', views.LicenseAutocomplete.as_view(), name='license-autocomplete'),
+    url('^license-autocomplete/', views.LicenseAutocomplete.as_view(), name='license-autocomplete'),
 ]
