@@ -32,6 +32,9 @@ ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
     'license_manager',
+    'easy_thumbnails',
+    'filer',
+    'mptt',
     'dal',
     'dal_select2',
     'django_admin_listfilter_dropdown',

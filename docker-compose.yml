@@ -13,6 +13,11 @@ services:
     command: ["./bin/wait-for-it.sh", "lms_db:5432", "--", "bash", "./bin/run.sh"]
     volumes:
       - ./src/:/code
+      - ./static/:/static
+      - ./media/:/media
+      - ./smedia/:/smedia
+    ports:
+      - "8000:8000"
     depends_on:
       - "db"
     restart: always

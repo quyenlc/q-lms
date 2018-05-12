@@ -15,7 +15,7 @@ from dal import forward
 from django_admin_listfilter_dropdown.filters import RelatedDropdownFilter
 
 from .models import (
-    Supplier, SoftwareFamily, Software,
+    Supplier, SoftwareFamily, Software, LicenseImage,
     License, LicensedSoftware, LicenseAssignment, LicenseSummary)
 from .actions import delete_license_assignments
 
@@ -60,6 +60,14 @@ class LicensedSoftwareInline(admin.TabularInline):
     model = LicensedSoftware
     form = LicensedSoftwareForm
     min_num = 1
+    extra = 1
+
+
+class LicenseImageInline(admin.TabularInline):
+    model = LicenseImage
+    extra = 1
+    verbose_name = 'image'
+    verbose_name_plural = 'images'
 
 
 class LicenseForm(forms.ModelForm):
@@ -123,7 +131,7 @@ class LicenseForm(forms.ModelForm):
 class LicenseAdmin(admin.ModelAdmin):
     save_as = True
     form = LicenseForm
-    inlines = [LicensedSoftwareInline]
+    inlines = [LicensedSoftwareInline, LicenseImageInline]
     list_display = [
         'description', 'get_display_softwares',
         'license_number', 'total', 'linked_used_total',

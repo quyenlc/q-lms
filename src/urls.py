@@ -23,6 +23,7 @@ from license_manager.views import LicenseAutocomplete, LicensedSoftwareAutocompl
 urlpatterns = [
     url(r'^', include('filer.server.urls')),
     url(r'^admin/', admin.site.urls),
+    url(r'^filer/', include('filer.urls')),
     url(r'^admin_tools/', include('admin_tools.urls')),
     url(r'^license-autocomplete/', LicenseAutocomplete.as_view(), name='license-autocomplete'),
     url(r'^licensedsoftware-autocomplete/', LicensedSoftwareAutocomplete.as_view(), name='licensedsoftware-autocomplete'),

@@ -6,6 +6,9 @@ from django.utils.html import format_html
 from django.utils import timezone
 from django.urls import reverse
 
+from filer.fields.image import FilerImageField
+from filer.models.imagemodels import Image
+
 
 class Supplier(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -65,6 +68,7 @@ class License(models.Model):
     )
     softwares = models.ManyToManyField(Software, through='LicensedSoftware')
     users = models.ManyToManyField(User, through='LicenseAssignment')
+    images = models.ManyToManyField(Image, through='LicenseImage')
 
     description = models.CharField(max_length=100)
     active = models.BooleanField(default=True)
@@ -171,6 +175,14 @@ class License(models.Model):
 
     def __str__(self):
         return self.description
+
+
+class LicenseImage(models.Model):
+    image = FilerImageField()
+    license = models.ForeignKey('License')
+
+    def __str__(self):
+        return "Image ID: %d" % (self.image_id)
 
 
 class LicensedSoftware(models.Model):
