@@ -23,31 +23,57 @@
 
 {% block content %}
 <div id="content-main">
-    <div>
-        <h3>Softwares and licenses will be assigned to each user as bellow:</h3>
-        <ul>
-        {% for assign in assignments %}
-        <li>
-            {{ assign.user.username }} - {{ assign.software.get_full_name }} - {% if assign.license %} {{ assign.license.description }} {% if assign.license_key %} - {{ assign.license_key.serial_key }} {% endif %} {% else %} <span style="color: red">N/A (Not enough license)</span> {% endif %}
-        </li>
-        {% endfor %}
-        </ul>
+    <div style="margin-bottom: 2em">
+        <div style="margin-bottom: 2em">
+            <h3>Softwares and licenses will be assigned to each user as bellow:</h3>
+            <small>Note: OEM licenses could not be assigned automatically, you have to assign OEM license manually.</small>
+        </div>
+        <div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Software</th>
+                        <th>License</th>
+                        <th>License Key</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for assign in assignments %}
+                    <tr>
+                        <td>{{ assign.user.username }}</td>
+                        <td>{{ assign.software.get_full_name }}</td>
+                        {% if assign.license %}
+                        <td>{{ assign.license.description }}</td>
+                        {% else %}
+                        <td><span style="color: red">N/A (Not enough license)</span></td>
+                        {% endif %}
+                        {% if assign.license_key %}
+                        <td>{{ assign.license_key.serial_key }}</td>
+                        {% else %}
+                        <td><span style="color: red">N/A</span></td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
     <div class="delete-confirmation">
-    <form action="" method="post">{% csrf_token %}
-        <div>
-            {% for user in users %}
-            <input type="hidden" name="users" value="{{ user.pk }}" />
-            {% endfor %}
-            {% for software in softwares %}
-            <input type="hidden" name="softwares" value="{{ software.pk }}" />
-            {% endfor %}
-            <input type="hidden" name="_confirmed" />
-            <input type="submit" value="{% trans "Confirm" %}" />
-            <a href="#" class="button cancel-link">{% trans "Cancel" %}</a>
-        </div>
-    </form>
-</div>
+        <form action="" method="post">{% csrf_token %}
+            <div>
+                {% for user in users %}
+                <input type="hidden" name="users" value="{{ user.pk }}" />
+                {% endfor %}
+                {% for software in softwares %}
+                <input type="hidden" name="softwares" value="{{ software.pk }}" />
+                {% endfor %}
+                <input type="hidden" name="_confirmed" />
+                <input type="submit" value="{% trans "Confirm" %}" />
+                <a href="#" class="button cancel-link">{% trans "Cancel" %}</a>
+            </div>
+        </form>
+    </div>
 </div>
 {% endblock %}
 
