@@ -5,6 +5,7 @@ from django.conf.urls import url
 from django.contrib import admin
 from django.contrib import messages
 from django.db.models import F, Q
+from django.db import transaction
 from django.contrib.auth.models import User
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.core.exceptions import PermissionDenied
@@ -14,8 +15,10 @@ from dal import autocomplete
 from dal import forward
 from django_admin_listfilter_dropdown.filters import RelatedDropdownFilter
 
+import nested_admin
+
 from .models import (
-    Supplier, SoftwareFamily, Software, LicenseImage,
+    Supplier, SoftwareFamily, Software, LicenseImage, LicenseKey,
     License, LicensedSoftware, LicenseAssignment, LicenseSummary)
 from .actions import delete_license_assignments
 
@@ -49,18 +52,25 @@ class LicensedSoftwareForm(forms.ModelForm):
         fields = '__all__'
         widgets = {
             'software': autocomplete.ModelSelect2(
-                url='licensedsoftware-autocomplete',
+                url='software_autocomplete',
                 forward=['software_family'],
                 attrs={'data-html': True}
             )
         }
 
 
-class LicensedSoftwareInline(admin.TabularInline):
+class LicenseKeyInline(nested_admin.NestedTabularInline):
+    model = LicenseKey
+    extra = 1
+    classes = ['collapse']
+
+
+class LicensedSoftwareInline(nested_admin.NestedStackedInline):
     model = LicensedSoftware
     form = LicensedSoftwareForm
     min_num = 1
     extra = 1
+    inlines = [LicenseKeyInline]
 
 
 class LicenseImageInline(admin.TabularInline):
@@ -128,7 +138,7 @@ class LicenseForm(forms.ModelForm):
         fields = '__all__'
 
 
-class LicenseAdmin(admin.ModelAdmin):
+class LicenseAdmin(nested_admin.NestedModelAdmin):
     save_as = True
     form = LicenseForm
     inlines = [LicensedSoftwareInline, LicenseImageInline]
@@ -163,10 +173,20 @@ class LicenseAssignmentForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(LicenseAssignmentForm, self).__init__(*args, **kwargs)
         license_widget = self.fields['license'].widget.widget
+        license_key_widget = self.fields['license_key'].widget.widget
         if self.instance.pk:
-            license_widget.forward = ['software', forward.Const(self.instance.license_id, 'license')]
+            license_widget.forward = [
+                'software',
+                forward.Const(self.instance.license_id, 'license'),
+            ]
+            license_key_widget.forward = [
+                'software',
+                'license',
+                forward.Const(self.instance.license_key_id, 'license_key'),
+            ]
         else:
             license_widget.forward = ['software']
+            license_key_widget.forward = ['software', 'license']
 
     def clean_license(self):
         lic = self.cleaned_data.get('license', None)
@@ -176,21 +196,42 @@ class LicenseAssignmentForm(forms.ModelForm):
 
         soft = self.cleaned_data.get('software', None)
         if soft and not lic.softwares.filter(pk=soft.id):
-            raise forms.ValidationError("Invalid license")
+            raise forms.ValidationError("License mismatch")
         is_create = True if not self.instance else False
-        if is_create and (lic.total - lic.used_total == 0):
+        has_changed = 'license' in self.changed_data
+        if (is_create or has_changed) and (lic.total - lic.used_total == 0):
             raise forms.ValidationError("Not enough license")
 
         return lic
+
+    def clean_license_key(self):
+        lic_key = self.cleaned_data.get('license_key', None)
+        if not lic_key:
+            return None
+        soft = self.cleaned_data.get('software', None)
+        lic = self.cleaned_data.get('license', None)
+        lic_soft = lic_key.licensed_software
+        if (not soft or not lic or lic_soft.license_id != lic.pk or lic_soft.software_id != soft.pk):
+            raise forms.ValidationError("License key mismatch")
+
+        is_create = True if not self.instance else False
+        has_changed = 'license_key' in self.changed_data
+        if (is_create or has_changed) and not lic_key.is_available():
+            raise forms.ValidationError("License key unavailable")
+        return lic_key
 
     class Meta:
         model = LicenseAssignment
         fields = '__all__'
         widgets = {
             'license': autocomplete.ModelSelect2(
-                url='license-autocomplete',
+                url='license_autocomplete',
                 attrs={'data-html': True}
-            )
+            ),
+            'license_key': autocomplete.ModelSelect2(
+                url='license_key_autocomplete',
+                attrs={'data-html': True}
+            ),
         }
 
     class Media:
@@ -234,9 +275,8 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
     actions = [delete_license_assignments]
 
     def get_serial_key(self, obj):
-        if obj.license:
-            licensed_software = LicensedSoftware.objects.get(license_id=obj.license, software=obj.software)
-            return licensed_software.serial_key
+        if obj.license_key:
+            return obj.license_key.serial_key
         else:
             return None
     get_serial_key.short_description = "Serial Key"
@@ -264,37 +304,69 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
         else:
             form = LicenseBulkAssignForm(request.POST)
             if form.is_valid():
+                maps = {}
                 licenses = {}
-                for sw in form.cleaned_data['softwares']:
-                    licenses[sw.id] = list(License.objects.annotate(remaining=F('total') - F('used_total'))
-                                                      .filter(softwares=sw, remaining__gt=0)
-                                                      .values('id', 'description', 'remaining'))
+                license_keys = {}
+                softwares = form.cleaned_data['softwares']
+                rels = (LicensedSoftware.objects.select_related('license')
+                                                .annotate(remaining=F('license__total') - F('license__used_total'))
+                                                .filter(software__in=softwares, remaining__gt=0)
+                                                .exclude(license__license_type=License.LICENSE_OEM)
+                                                .order_by('-license__used_total'))
+                for obj in rels:
+                    if obj.software_id in maps:
+                        maps[obj.software_id].append(obj.license_id)
+                    else:
+                        maps[obj.software_id] = [obj.license_id]
+
+                    if obj.license_id not in licenses:
+                        obj.license.remaining = obj.remaining
+                        licenses[obj.license_id] = obj.license
+
+                    pk = "{}_{}".format(obj.software_id, obj.license_id)
+                    license_keys[pk] = list(LicenseKey.objects.filter(licensed_software=obj.pk).order_by('activation_type'))
+
                 assignments = []
                 for user in form.cleaned_data['users']:
-                    for sw in form.cleaned_data['softwares']:
-                        license = None
-                        if licenses[sw.id]:
-                            license = licenses[sw.id][0]
-                            if license['remaining'] > 0:
-                                license['remaining'] -= 1
-                            if license['remaining'] == 0:
-                                del licenses[sw.id][0]
+                    for sw in softwares:
+                        lic = None
+                        lic_key = None
+                        if sw.id in maps:
+                            while maps[sw.id]:
+                                lic_id = maps[sw.id][0]
+                                if lic_id in licenses and licenses[lic_id].remaining > 0:
+                                    lic = licenses[lic_id]
+                                    lic.remaining -= 1
+                                    break
+                                else:
+                                    del maps[sw.id][0]
+                                    continue
+                        if lic:
+                            pk = "{}_{}".format(sw.id, lic.id)
+                            if pk in license_keys and license_keys[pk]:
+                                lic_key = license_keys[pk][0]
+                                if lic_key.activation_type == LicenseKey.ACTIVATION_TYPE_SINGLE:
+                                    del license_keys[pk][0]
+
                         assignments.append({
                             'user': user,
                             'software': sw,
-                            'license': license})
+                            'license': lic,
+                            'license_key': lic_key,
+                        })
 
                 if '_confirmed' in request.POST:
-                    for assignment in assignments:
-                        license_id = None
-                        if assignment['license']:
-                            license_id = assignment['license']['id']
-                        obj = LicenseAssignment(
-                            user_id=assignment['user'].pk,
-                            software_id=assignment['software'].pk,
-                            license_id=license_id,
-                        )
-                        obj.save()
+                    with transaction.atomic():
+                        for assignment in assignments:
+                            license = assignment['license']
+                            license_key = assignment['license_key']
+                            obj = LicenseAssignment(
+                                user_id=assignment['user'].pk,
+                                software_id=assignment['software'].pk,
+                                license_id=license.pk if license else None,
+                                license_key_id=license_key.pk if license_key else None
+                            )
+                            obj.save()
                     post_url = reverse(
                         'admin:%s_%s_changelist' % (opts.app_label, opts.model_name),
                         current_app=self.admin_site.name,

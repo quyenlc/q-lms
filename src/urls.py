@@ -18,16 +18,22 @@ from django.conf.urls import include, url
 from django.conf import settings
 from django.conf.urls.static import static
 
-from license_manager.views import LicenseAutocomplete, LicensedSoftwareAutocomplete
+from license_manager.views import (
+    LicenseAutocomplete,
+    SoftwareAutocomplete,
+    LicenseKeyAutocomplete,
+)
 
 urlpatterns = [
     url(r'^', include('filer.server.urls')),
     url(r'^admin/', admin.site.urls),
     url(r'^filer/', include('filer.urls')),
     url(r'^admin_tools/', include('admin_tools.urls')),
-    url(r'^license-autocomplete/', LicenseAutocomplete.as_view(), name='license-autocomplete'),
-    url(r'^licensedsoftware-autocomplete/', LicensedSoftwareAutocomplete.as_view(), name='licensedsoftware-autocomplete'),
+    url(r'^autocomplete/license_key/', LicenseKeyAutocomplete.as_view(), name='license_key_autocomplete'),
+    url(r'^autocomplete/license/', LicenseAutocomplete.as_view(), name='license_autocomplete'),
+    url(r'^autocomplete/software/', SoftwareAutocomplete.as_view(), name='software_autocomplete'),
     url(r'^account/', include('social_django.urls')),
+    url(r'^nested_admin/', include('nested_admin.urls')),
 ]
 
 if settings.DEBUG:

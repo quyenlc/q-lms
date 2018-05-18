@@ -4,7 +4,7 @@ from django.utils.html import format_html
 
 from dal import autocomplete
 
-from .models import Software, License, LicenseAssignment
+from .models import Software, License, LicenseKey, LicenseAssignment
 
 
 class LicenseAutocomplete(autocomplete.Select2QuerySetView):
@@ -33,10 +33,32 @@ class LicenseAutocomplete(autocomplete.Select2QuerySetView):
         return format_html(text, item.description, item.total, item.used_total)
 
 
-class LicensedSoftwareAutocomplete(autocomplete.Select2QuerySetView):
+class SoftwareAutocomplete(autocomplete.Select2QuerySetView):
     def get_queryset(self):
+        if not self.request.user.is_authenticated:
+            return Software.objects.none()
         software_family = self.forwarded.get('software_family', None)
         qs = Software.objects.all()
         if software_family:
             qs = qs.filter(software_family=software_family)
         return qs
+
+
+class LicenseKeyAutocomplete(autocomplete.Select2QuerySetView):
+    def get_queryset(self):
+        if not self.request.user.is_authenticated:
+            return LicenseKey.objects.none()
+        software_id = self.forwarded.get('software', None)
+        license_id = self.forwarded.get('license', None)
+        license_key_id = self.forwarded.get('license_key', None)
+        return LicenseKey.objects.get_available_keys(software_id, license_id, license_key_id)
+
+    def get_result_label(self, item):
+        text = '''{}<br>
+            <strong>Platform:</strong> {}&nbsp;&nbsp;
+            <strong>Type:</strong> {}'''
+        return format_html(
+            text, item.serial_key,
+            item.get_platform_display(),
+            item.get_activation_type_display(),
+        )

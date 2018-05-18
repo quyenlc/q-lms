@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from django.utils.html import format_html
 from django.utils import timezone
 from django.urls import reverse
+from django.db.models import Q
 
 from filer.fields.image import FilerImageField
 from filer.models.imagemodels import Image
@@ -196,6 +197,31 @@ class LicenseImage(models.Model):
 
 
 class LicensedSoftware(models.Model):
+    license = models.ForeignKey('License', on_delete=models.CASCADE)
+    software = models.ForeignKey('Software', on_delete=models.CASCADE)
+
+    def __str__(self):
+        return str(self.software)
+
+    class Meta:
+        unique_together = ("license", "software")
+
+
+class LicenseKeyManager(models.Manager):
+    def get_available_keys(self, software_id, license_id, include_id=None):
+        if not(software_id and license_id):
+            return self.none()
+        t = LicenseKey.ACTIVATION_TYPE_SINGLE
+        q = ~Q(activation_type=t)
+        if include_id:
+            q |= Q(pk=include_id)
+        return self.filter(
+            Q(licensed_software__license_id=license_id, licensed_software__software_id=software_id) &
+            (Q(activation_type=t, licenseassignment__isnull=True) | q)
+        )
+
+
+class LicenseKey(models.Model):
     PLATFORM_ALL = 1
     PLATFORM_WINDOWS = 2
     PLATFORM_MACOS = 3
@@ -206,25 +232,48 @@ class LicensedSoftware(models.Model):
         (PLATFORM_MACOS, 'Mac OS'),
         (PLATFORM_LINUX, 'Linux'),
     )
-    license = models.ForeignKey('License', on_delete=models.PROTECT)
-    software = models.ForeignKey('Software', on_delete=models.PROTECT)
-    serial_key = models.CharField(max_length=200, blank=True)
+
+    ACTIVATION_TYPE_SINGLE = 1
+    ACTIVATION_TYPE_VOLUME = 2
+    ACTIVATION_TYPE_SERVER = 3
+
+    ACTIVATION_TYPES = (
+        (ACTIVATION_TYPE_SINGLE, 'Single'),
+        (ACTIVATION_TYPE_VOLUME, 'Volume'),
+        (ACTIVATION_TYPE_SERVER, 'Server'),
+    )
+    licensed_software = models.ForeignKey(
+        'LicensedSoftware', on_delete=models.CASCADE)
+    serial_key = models.CharField(max_length=200)
+    activation_type = models.PositiveIntegerField(
+        choices=ACTIVATION_TYPES, default=ACTIVATION_TYPE_VOLUME)
     platform = models.IntegerField(choices=PLATFORMS, default=PLATFORM_WINDOWS)
-    note = models.CharField(max_length=200, blank=True)
+
+    # Override default manager
+    objects = LicenseKeyManager()
+
+    def is_available(self):
+        if self.activation_type == self.ACTIVATION_TYPE_SINGLE and self.licenseassignment_set.all():
+            return False
+        else:
+            return True
 
     def __str__(self):
-        return str(self.software)
+        return self.serial_key
 
     class Meta:
-        unique_together = ("software", "license", "platform")
+        unique_together = ("serial_key", "platform")
 
 
 class LicenseAssignment(models.Model):
     user = models.ForeignKey('auth.User', on_delete=models.PROTECT)
     software = models.ForeignKey('Software', on_delete=models.PROTECT)
     # oem = models.BooleanField(verbose_name="Use OEM license", help_text='If this option is checked, license field will be ignored.')
-    license = models.ForeignKey('License', blank=True, null=True, on_delete=models.PROTECT)
     # device = models.CharField(max_length=100, blank=True, null=True)
+    license = models.ForeignKey(
+        'License', blank=True, null=True, on_delete=models.PROTECT)
+    license_key = models.ForeignKey(
+        'LicenseKey', blank=True, null=True, on_delete=models.PROTECT)
     note = models.TextField(blank=True)
 
     def __init__(self, *args, **kwargs):
