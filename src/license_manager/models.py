@@ -29,6 +29,11 @@ class SoftwareFamily(models.Model):
         verbose_name_plural = 'Software Families'
 
 
+class SoftwareManager(models.Manager):
+    def get_queryset(self):
+        return super(SoftwareManager, self).get_queryset().select_related('software_family')
+
+
 class Software(models.Model):
     users = models.ManyToManyField(User, through='LicenseAssignment')
     software_family = models.ForeignKey('SoftwareFamily', on_delete=models.PROTECT)
@@ -39,6 +44,9 @@ class Software(models.Model):
         max_length=50, blank=True,
         help_text='''Schematic version.<br>Could use glob symbol * for version matching (eg: 12.*).<br>
             Empty value also matches all versions.''')
+
+    # Override default manager
+    objects = SoftwareManager()
 
     def get_full_name(self):
         return "{} {}".format(self.software_family.name, self.name)

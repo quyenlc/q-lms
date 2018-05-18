@@ -36,6 +36,7 @@ class SoftwareFamilyAdmin(admin.ModelAdmin):
 class SoftwareAdmin(admin.ModelAdmin):
     list_display = ['__str__', 'version']
     search_fields = ['name', 'version', 'software_family__name']
+    select_related = ('software_family',)
 
 
 class LicensedSoftwareForm(forms.ModelForm):
@@ -265,7 +266,7 @@ class LicenseBulkAssignForm(forms.Form):
 class LicenseAssignmentAdmin(admin.ModelAdmin):
     form = LicenseAssignmentForm
     list_display = ['id', 'user', 'software', 'linked_license', 'get_serial_key']
-    list_select_related = ['user', 'software', 'license']
+    list_select_related = ['user', 'software', 'license', 'license_key', 'software__software_family']
     list_filter = (
         ('user', RelatedDropdownFilter),
         ('software__software_family', RelatedDropdownFilter),
