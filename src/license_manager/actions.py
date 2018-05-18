@@ -42,12 +42,15 @@ def delete_license_assignments(modeladmin, request, queryset):
         if n:
             for obj in queryset:
                 obj_display = str(obj)
-                if obj.license_id not in licenses:
-                    licenses[obj.license_id] = obj.license
+                if obj.license_id:
+                    if obj.license_id not in licenses:
+                        licenses[obj.license_id] = {'lic': obj.license, 'count': 1}
+                    else:
+                        licenses[obj.license_id]['count'] += 1
                 modeladmin.log_deletion(request, obj, obj_display)
             queryset.delete()
-            for lic in licenses.values():
-                lic.update_used_total()
+            for val in licenses.values():
+                val['lic'].unassign(val['count'])
             modeladmin.message_user(request, _("Successfully deleted %(count)d %(items)s.") % {
                 "count": n, "items": model_ngettext(modeladmin.opts, n)
             }, messages.SUCCESS)

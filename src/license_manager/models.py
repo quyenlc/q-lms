@@ -93,13 +93,23 @@ class License(models.Model):
     ended_date = models.DateField(blank=True, null=True)
     note = models.TextField(blank=True)
 
-    def update_used_total(self):
-        lic = License.objects.select_for_update().get(pk=self.id)
-        used_total = lic.users.count()
-        if used_total > lic.total:
-            raise IntegrityError("Not enough license")
-        lic.used_total = used_total
-        lic.save()
+    def assign(self, amount=1):
+        with transaction.atomic():
+            lic = License.objects.select_for_update().get(pk=self.id)
+            if lic.total - lic.used_total >= amount:
+                lic.used_total += amount
+                lic.save()
+            else:
+                raise IntegrityError("Not enough license.")
+
+    def unassign(self, amount=1):
+        with transaction.atomic():
+            lic = License.objects.select_for_update().get(pk=self.id)
+            if lic.used_total >= amount:
+                lic.used_total -= amount
+                lic.save()
+            else:
+                raise IntegrityError("Could not unassign license, unassign amount is too large.")
 
     def get_display_softwares(self):
         names = []
@@ -216,11 +226,10 @@ class LicenseAssignment(models.Model):
     license = models.ForeignKey('License', blank=True, null=True, on_delete=models.PROTECT)
     # device = models.CharField(max_length=100, blank=True, null=True)
     note = models.TextField(blank=True)
-    __original_license = None
 
     def __init__(self, *args, **kwargs):
         super(LicenseAssignment, self).__init__(*args, **kwargs)
-        self.original_license = self.license
+        self.original_license_id = self.license_id
 
     def get_unlicensed_softwares():
         summary = {}
@@ -239,17 +248,23 @@ class LicenseAssignment(models.Model):
 
     def save(self, *args, **kwargs):
         with transaction.atomic():
+            is_new = True if not self.pk else False
             super(LicenseAssignment, self).save(*args, **kwargs)
-            if self.license:
-                self.license.update_used_total()
-            if self.original_license != self.license and self.original_license:
-                self.original_license.update_used_total()
+            if is_new:
+                if self.license_id:
+                    self.license.assign()
+            else:
+                if self.original_license_id != self.license_id:
+                    if self.original_license_id:
+                        License.objects.get(pk=self.original_license_id).unassign()
+                    if self.license_id:
+                        self.license.assign()
 
     def delete(self):
         with transaction.atomic():
             super(LicenseAssignment, self).delete()
-            if self.license:
-                self.license.update_used_total()
+            if self.license_id:
+                self.license.unassign()
 
     def linked_license(self):
         url = reverse(
