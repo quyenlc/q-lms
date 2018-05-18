@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'easy_thumbnails',
     'filer',
     'mptt',
+    'nested_admin',
     'dal',
     'dal_select2',
     'django_admin_listfilter_dropdown',

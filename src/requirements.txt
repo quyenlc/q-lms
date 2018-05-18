@@ -10,3 +10,4 @@ social-auth-app-django
 psycopg2-binary
 gunicorn
 django-filer
+nested-admin
