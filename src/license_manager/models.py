@@ -50,13 +50,6 @@ class Software(models.Model):
         unique_together = ('name', 'version')
 
 
-# class LicenseContract(models.Model):
-#     name = models.CharField(max_length=100)
-#     supplier = models.ForeignKey('Supplier', blank=True, null=True, on_delete=models.PROTECT)
-#     contract_number = models.CharField(max_length=100, blank=True)
-#     purchased_date = models.DateField(blank=True, null=True)
-
-
 class License(models.Model):
     LICENSE_PERPETUAL = 1
     LICENSE_SUBSCRIPTION = 2
@@ -76,6 +69,7 @@ class License(models.Model):
     software_family = models.ForeignKey('SoftwareFamily', on_delete=models.PROTECT)
     total = models.PositiveIntegerField()
     used_total = models.PositiveIntegerField(blank=True, null=True, default=0)
+    # remaining = models.PositiveIntegerField(blank=True, null=True, default=0)
     license_type = models.PositiveIntegerField(
         choices=LICENSE_TYPES, default=LICENSE_PERPETUAL,
         help_text='''Perpetual only requires payment once.<br>
@@ -87,7 +81,6 @@ class License(models.Model):
             This field is required for OEM license and will be ignored otherwise.''')
     supplier = models.ForeignKey('Supplier', blank=True, null=True, on_delete=models.PROTECT)
     license_number = models.CharField(max_length=100, blank=True)
-    # remaining = models.PositiveIntegerField(blank=True, null=True, default=0)
     # max_device = models.PositiveIntegerField(default=1)
     purchased_date = models.DateField(blank=True, null=True)
     started_date = models.DateField(blank=True, null=True)
@@ -116,7 +109,6 @@ class License(models.Model):
         names = []
         for software in self.softwares.all():
             names.append(str(software))
-        # return "{} {}".format(self.software_family.name, ", ".join(names))
         return format_html("<br>".join(names))
 
     get_display_softwares.short_description = "Products"
@@ -268,8 +260,6 @@ class LicenseKey(models.Model):
 class LicenseAssignment(models.Model):
     user = models.ForeignKey('auth.User', on_delete=models.PROTECT)
     software = models.ForeignKey('Software', on_delete=models.PROTECT)
-    # oem = models.BooleanField(verbose_name="Use OEM license", help_text='If this option is checked, license field will be ignored.')
-    # device = models.CharField(max_length=100, blank=True, null=True)
     license = models.ForeignKey(
         'License', blank=True, null=True, on_delete=models.PROTECT)
     license_key = models.ForeignKey(
