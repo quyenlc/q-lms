@@ -314,6 +314,8 @@ class LicenseAssignment(models.Model):
                 self.license.unassign()
 
     def linked_license(self):
+        if not self.license_id:
+            return
         url = reverse(
             'admin:%s_%s_changelist' %
             (self._meta.app_label, 'license'),
