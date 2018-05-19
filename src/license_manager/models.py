@@ -66,6 +66,12 @@ class Platform(models.Model):
         return self.name
 
 
+class LicenseManager(models.Manager):
+    def get_queryset(self):
+        queryset = super(LicenseManager, self).get_queryset()
+        return queryset.annotate(remaining=F('total') - F('used_total'))
+
+
 class License(models.Model):
     LICENSE_PERPETUAL = 1
     LICENSE_SUBSCRIPTION = 2
@@ -102,6 +108,9 @@ class License(models.Model):
     started_date = models.DateField(blank=True, null=True)
     ended_date = models.DateField(blank=True, null=True)
     note = models.TextField(blank=True)
+
+    # Override default manager
+    objects = LicenseManager()
 
     def assign(self, amount=1):
         with transaction.atomic():

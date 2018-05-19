@@ -196,7 +196,7 @@ class LicenseAdmin(nested_admin.NestedModelAdmin):
     inlines = [LicensedSoftwareInline]
     list_display = [
         'description', 'get_display_softwares',
-        'license_number', 'total', 'linked_used_total',
+        'license_number', 'total', 'linked_used_total', 'remaining',
         'supplier', 'purchased_date', 'started_date', 'ended_date']
     list_select_related = ['supplier']
     exclude = ['description']
@@ -218,6 +218,9 @@ class LicenseAdmin(nested_admin.NestedModelAdmin):
                 'software_family', 'license_type', 'oem_device',
                 'total', 'license_number', 'supplier', 'purchased_date',
                 'started_date', 'ended_date', 'note']
+
+    def remaining(self, obj):
+        return obj.remaining
 
 
 class LicenseAssignmentForm(forms.ModelForm):

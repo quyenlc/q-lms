@@ -16,12 +16,11 @@ class LicenseAutocomplete(autocomplete.Select2QuerySetView):
         platform_id = self.forwarded.get('platform', None)
         license_id = self.forwarded.get('license', None)
         if software_id and platform_id and Software.objects.filter(pk=software_id, platforms=platform_id).exists():
-            qs = License.objects.annotate(remaining=F('total') - F('used_total'))
             f = Q(softwares=software_id)
             sub_f = Q(remaining__gt=0)
             if license_id:
                 sub_f |= Q(pk=license_id)
-            return qs.filter(f & sub_f).order_by('-used_total')
+            return License.objects.filter(f & sub_f).order_by('remaining')
         else:
             return License.objects.none()
 
