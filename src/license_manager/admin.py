@@ -297,6 +297,7 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
         ('license', RelatedDropdownFilter),
         ('platform', RelatedDropdownFilter),
     )
+    ordering = ('user__username',)
     actions = [delete_license_assignments]
 
     def get_serial_key(self, obj):
