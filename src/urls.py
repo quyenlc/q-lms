@@ -19,9 +19,11 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 from license_manager.views import (
+    PlatformAutocomplete,
     LicenseAutocomplete,
     SoftwareAutocomplete,
     LicenseKeyAutocomplete,
+    UserAutocomplete,
 )
 
 urlpatterns = [
@@ -32,6 +34,8 @@ urlpatterns = [
     url(r'^autocomplete/license_key/', LicenseKeyAutocomplete.as_view(), name='license_key_autocomplete'),
     url(r'^autocomplete/license/', LicenseAutocomplete.as_view(), name='license_autocomplete'),
     url(r'^autocomplete/software/', SoftwareAutocomplete.as_view(), name='software_autocomplete'),
+    url(r'^autocomplete/platform/', PlatformAutocomplete.as_view(), name='platform_autocomplete'),
+    url(r'^autocomplete/user/', UserAutocomplete.as_view(), name='user_autocomplete'),
     url(r'^account/', include('social_django.urls')),
     url(r'^nested_admin/', include('nested_admin.urls')),
 ]

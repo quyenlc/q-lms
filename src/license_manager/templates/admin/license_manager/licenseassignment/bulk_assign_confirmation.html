@@ -44,14 +44,14 @@
                     <tr>
                         <td>{{ assign.user.username }}</td>
                         <td>{{ assign.software.get_full_name }}</td>
-                        <td>{{ platform_display }}</td>
+                        <td>{{ platform.name }}</td>
                         {% if assign.license %}
                         <td>{{ assign.license.description }}</td>
                         {% else %}
                         <td><span style="color: red">N/A (Not enough license)</span></td>
                         {% endif %}
                         {% if assign.license_key %}
-                        <td>{{ assign.license_key.serial_key }}<br><small>Platform: {{assign.license_key.licensed_software.get_platform_display}}</small></td>
+                        <td>{{ assign.license_key.serial_key }}</td>
                         {% else %}
                         <td><span style="color: red">N/A</span></td>
                         {% endif %}
@@ -70,7 +70,7 @@
                 {% for software in softwares %}
                 <input type="hidden" name="softwares" value="{{ software.pk }}" />
                 {% endfor %}
-                <input type="hidden" name="platform" value="{{ platform }}" />
+                <input type="hidden" name="platform" value="{{ platform.pk }}" />
                 <input type="hidden" name="_confirmed" />
                 <input type="submit" value="{% trans "Confirm" %}" />
                 <a href="#" class="button cancel-link">{% trans "Cancel" %}</a>

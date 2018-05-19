@@ -33,10 +33,60 @@ class SoftwareFamilyAdmin(admin.ModelAdmin):
     search_fields = ['name']
 
 
+class SoftwareForm(forms.ModelForm):
+    class Meta:
+        model = Software
+        fields = '__all__'
+        widgets = {
+            'platforms': autocomplete.ModelSelect2Multiple(
+                url='platform_autocomplete',
+            ),
+        }
+
+
 class SoftwareAdmin(admin.ModelAdmin):
-    list_display = ['__str__', 'version']
+    form = SoftwareForm
+    list_display = ['__str__', 'version', 'get_platforms']
     search_fields = ['name', 'version', 'software_family__name']
     select_related = ('software_family',)
+
+    def get_platforms(self, obj):
+        names = [platform.name for platform in obj.platforms.all()]
+        return ', '.join(names)
+    # get_platforms.allow_tags = True
+    get_platforms.short_description = 'Platforms'
+
+
+class LicenseKeyForm(forms.ModelForm):
+    def clean_platforms(self):
+        platforms = self.cleaned_data.get('platforms', None)
+        if not platforms:
+            return None
+        # import pdb; pdb.set_trace()
+        sw = self.instance.licensed_software.software
+        platform_ids = list(sw.platforms.all())
+        for p in platforms:
+            if not sw.platforms.filter(pk=p.pk).exists():
+                raise forms.ValidationError("%s is not available on %s platform" % (str(sw), p.name))
+
+        return platforms
+
+    class Meta:
+        model = LicenseKey
+        fields = '__all__'
+        widgets = {
+            'platforms': autocomplete.ModelSelect2Multiple(
+                url='platform_autocomplete',
+                forward=['software'],
+            ),
+        }
+
+
+class LicenseKeyInline(nested_admin.NestedTabularInline):
+    model = LicenseKey
+    form = LicenseKeyForm
+    extra = 1
+    classes = ['collapse']
 
 
 class LicensedSoftwareForm(forms.ModelForm):
@@ -56,14 +106,8 @@ class LicensedSoftwareForm(forms.ModelForm):
                 url='software_autocomplete',
                 forward=['software_family'],
                 attrs={'data-html': True}
-            )
+            ),
         }
-
-
-class LicenseKeyInline(nested_admin.NestedTabularInline):
-    model = LicenseKey
-    extra = 1
-    classes = ['collapse']
 
 
 class LicensedSoftwareInline(nested_admin.NestedStackedInline):
@@ -183,7 +227,7 @@ class LicenseAssignmentForm(forms.ModelForm):
         license_widget = self.fields['license'].widget.widget
         license_key_widget = self.fields['license_key'].widget.widget
         license_forward = ['software', 'platform']
-        license_key_forward = ['software', 'license', 'platform']
+        license_key_forward = ['software', 'platform', 'license']
         if self.instance.pk:
             license_forward.append(
                 forward.Const(self.instance.license_id, 'license'))
@@ -191,6 +235,15 @@ class LicenseAssignmentForm(forms.ModelForm):
                 forward.Const(self.instance.license_key_id, 'license_key'))
         license_widget.forward = license_forward
         license_key_widget.forward = license_key_forward
+
+    def clean_platform(self):
+        platform = self.cleaned_data.get('platform', None)
+        if not platform:
+            return None
+        sw = self.cleaned_data.get('software', None)
+        if not sw.platforms.filter(pk=platform.pk).exists():
+            raise forms.ValidationError("%s is not available on %s platform" % (str(sw), str(platform)))
+        return platform
 
     def clean_license(self):
         lic = self.cleaned_data.get('license', None)
@@ -201,11 +254,6 @@ class LicenseAssignmentForm(forms.ModelForm):
         soft = self.cleaned_data.get('software', None)
         if soft and not lic.softwares.filter(pk=soft.id):
             raise forms.ValidationError("License mismatch")
-
-        platform = self.cleaned_data.get('platform', None)
-        platforms = (LicensedSoftware.PLATFORM_ALL, platform,)
-        if not lic.licensedsoftware_set.filter(platform__in=platforms).exists():
-            raise forms.ValidationError("Platform mismatch")
 
         is_create = True if not self.instance else False
         has_changed = 'license' in self.changed_data
@@ -220,8 +268,7 @@ class LicenseAssignmentForm(forms.ModelForm):
             return None
 
         platform = self.cleaned_data.get('platform', None)
-        platforms = (LicensedSoftware.PLATFORM_ALL, platform,)
-        if lic_key.licensed_software.platform not in platforms:
+        if not lic_key.platforms.filter(pk=platform.pk).exists():
             raise forms.ValidationError("Platform mismatch")
 
         soft = self.cleaned_data.get('software', None)
@@ -240,6 +287,25 @@ class LicenseAssignmentForm(forms.ModelForm):
         model = LicenseAssignment
         fields = '__all__'
         widgets = {
+            'user': autocomplete.ModelSelect2(
+                url='user_autocomplete',
+                attrs={
+                    'data-minimum-input-length': 3,
+                }
+            ),
+            'software': autocomplete.ModelSelect2(
+                url='software_autocomplete',
+                attrs={
+                    'data-minimum-input-length': 3,
+                }
+            ),
+            'platform': autocomplete.ModelSelect2(
+                url='platform_autocomplete',
+                forward=['software'],
+                attrs={
+                    'data-minimum-results-for-search': 5,
+                }
+            ),
             'license': autocomplete.ModelSelect2(
                 url='license_autocomplete',
                 attrs={'data-html': True}
@@ -259,38 +325,69 @@ class LicenseAssignmentForm(forms.ModelForm):
 class LicenseBulkAssignForm(forms.Form):
     users = forms.ModelMultipleChoiceField(
         queryset=User.objects.all(),
-        widget=FilteredSelectMultiple(
-            "users",
-            is_stacked=False,
+        widget=autocomplete.ModelSelect2Multiple(
+            url="user_autocomplete",
+            attrs={
+                # 'data-close-on-select': 'false',
+                # 'data-minimum-input-length': 3,
+                'data-placeholder': 'Select one or more users',
+            }
+        )
+    )
+    platform = forms.ModelChoiceField(
+        queryset=Platform.objects.all(),
+        widget=autocomplete.ModelSelect2(
+            url="platform_autocomplete",
+            attrs={
+                # 'data-close-on-select': 'true',
+                # 'data-minimum-input-length': 3,
+                'data-placeholder': 'Select a platform',
+            }
         )
     )
     softwares = forms.ModelMultipleChoiceField(
         queryset=Software.objects.all(),
-        widget=FilteredSelectMultiple(
-            "softwares",
-            is_stacked=False,
+        widget=autocomplete.ModelSelect2Multiple(
+            url="software_autocomplete",
+            forward=['platform'],
+            attrs={
+                # 'data-close-on-select': 'false',
+                # 'data-minimum-input-length': 3,
+                'data-placeholder': 'Select one or more softwares',
+            }
         )
     )
-    platform = forms.ChoiceField(
-        choices=LicensedSoftware.PLATFORMS[1:],
-    )
+
+    def clean_softwares(self):
+        softwares = self.cleaned_data.get('softwares', None)
+        if not softwares:
+            return None
+        platform = self.cleaned_data.get('platform', None)
+        invalid_softwares = softwares.exclude(platforms=platform)
+        if invalid_softwares:
+            names = [str(sw) for sw in invalid_softwares]
+            raise forms.ValidationError("%s is/are not available on %s" % (', '.join(names), platform.name))
+        return softwares
 
     class Media:
         css = {
             'all': ('admin/css/widgets.css',),
         }
+        js = (
+            'license_manager/bulk_assign_form/linked_data.js',
+        )
 
 
 class LicenseAssignmentAdmin(admin.ModelAdmin):
     form = LicenseAssignmentForm
-    list_display = ['id', 'user', 'software', 'linked_license', 'platform', 'get_serial_key']
-    list_select_related = ['user', 'software', 'license', 'license_key', 'software__software_family']
+    list_display = ['id', 'user', 'software', 'platform', 'linked_license', 'get_serial_key']
+    list_select_related = ['user', 'software', 'platform', 'license', 'license_key', 'software__software_family']
     list_filter = (
         ('user', RelatedDropdownFilter),
         ('software__software_family', RelatedDropdownFilter),
         ('software', RelatedDropdownFilter),
         ('license', RelatedDropdownFilter),
-        # ('platform', RelatedDropdownFilter),
+        ('platform', RelatedDropdownFilter),
     )
     ordering = ('user__username',)
     actions = [delete_license_assignments]
@@ -321,7 +418,7 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
             raise PermissionDenied
         opts = self.model._meta
         if request.method != 'POST':
-            form = LicenseBulkAssignForm(initial={'platform': LicensedSoftware.PLATFORM_WINDOWS})
+            form = LicenseBulkAssignForm()
         else:
             form = LicenseBulkAssignForm(request.POST)
             if form.is_valid():
@@ -329,13 +426,12 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
                 licenses = {}
                 license_keys = {}
                 softwares = form.cleaned_data['softwares']
-                platform = int(form.cleaned_data['platform'])
-                platforms = [LicensedSoftware.PLATFORM_ALL, platform]
+                platform = form.cleaned_data['platform']
                 rels = (LicensedSoftware.objects.select_related('license')
                                                 .annotate(remaining=F('license__total') - F('license__used_total'))
-                                                .filter(software__in=softwares, remaining__gt=0, platform__in=platforms)
+                                                .filter(software__in=softwares, remaining__gt=0)
                                                 .exclude(license__license_type=License.LICENSE_OEM)
-                                                .order_by('-license__used_total'))
+                                                .order_by('remaining'))
                 for obj in rels:
                     if obj.software_id in maps:
                         maps[obj.software_id].append(obj.license_id)
@@ -347,7 +443,7 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
                         licenses[obj.license_id] = obj.license
 
                     pk = "{}_{}".format(obj.software_id, obj.license_id)
-                    license_keys[pk] = list(LicenseKey.objects.filter(licensed_software=obj.pk).order_by('activation_type'))
+                    license_keys[pk] = list(LicenseKey.objects.filter(licensed_software=obj.pk, platforms=platform).order_by('activation_type'))
 
                 assignments = []
                 for user in form.cleaned_data['users']:
@@ -386,7 +482,7 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
                             obj = LicenseAssignment(
                                 user_id=assignment['user'].pk,
                                 software_id=assignment['software'].pk,
-                                platform=platform,
+                                platform_id=platform.pk,
                                 license_id=license.pk if license else None,
                                 license_key_id=license_key.pk if license_key else None
                             )
@@ -402,13 +498,11 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
                     )
                     return HttpResponseRedirect(post_url)
                 else:
-                    platform_display = [text for (code, text) in LicensedSoftware.PLATFORMS if platform == code]
                     context = {
                         **self.admin_site.each_context(request),
                         'users': form.cleaned_data['users'],
                         'softwares': form.cleaned_data['softwares'],
                         'platform': platform,
-                        'platform_display': platform_display[0],
                         'assignments': assignments,
                         'opts': opts,
                         'media': self.media,
@@ -422,7 +516,7 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
 
         adminForm = admin.helpers.AdminForm(
             form=form,
-            fieldsets=[(None, {'fields': ('users', 'softwares', 'platform')})],
+            fieldsets=[(None, {'fields': ('users', 'platform', 'softwares')})],
             prepopulated_fields={},
             model_admin=self)
         media = self.media + adminForm.media

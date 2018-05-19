@@ -44,6 +44,7 @@ class Software(models.Model):
         max_length=50, blank=True,
         help_text='''Schematic version.<br>Could use glob symbol * for version matching (eg: 12.*).<br>
             Empty value also matches all versions.''')
+    platforms = models.ManyToManyField('Platform')
 
     # Override default manager
     objects = SoftwareManager()
@@ -85,7 +86,6 @@ class License(models.Model):
     software_family = models.ForeignKey('SoftwareFamily', on_delete=models.PROTECT)
     total = models.PositiveIntegerField()
     used_total = models.PositiveIntegerField(blank=True, null=True, default=0)
-    # remaining = models.PositiveIntegerField(blank=True, null=True, default=0)
     license_type = models.PositiveIntegerField(
         choices=LICENSE_TYPES, default=LICENSE_PERPETUAL,
         help_text='''Perpetual only requires payment once.<br>
@@ -205,31 +205,19 @@ class LicenseImage(models.Model):
 
 
 class LicensedSoftware(models.Model):
-    PLATFORM_ALL = 1
-    PLATFORM_WINDOWS = 2
-    PLATFORM_MACOS = 3
-    PLATFORM_LINUX = 4
-    PLATFORMS = (
-        (PLATFORM_ALL, 'All'),
-        (PLATFORM_WINDOWS, 'Windows'),
-        (PLATFORM_MACOS, 'Mac OS'),
-        (PLATFORM_LINUX, 'Linux'),
-    )
-
     license = models.ForeignKey('License', on_delete=models.CASCADE)
     software = models.ForeignKey('Software', on_delete=models.CASCADE)
-    platform = models.PositiveIntegerField(choices=PLATFORMS, default=PLATFORM_WINDOWS)
 
     def __str__(self):
         return str(self.software)
 
     class Meta:
-        unique_together = ("license", "software", "platform")
+        unique_together = ("license", "software")
 
 
 class LicenseKeyManager(models.Manager):
-    def get_available_keys(self, software_id, license_id, platform_id=None, include_id=None):
-        if not(software_id and license_id):
+    def get_available_keys(self, software_id, license_id, platform_id, include_id=None):
+        if not(software_id and license_id and platform_id):
             return self.none()
         filter_assignment = {
             'license_id': license_id,
@@ -239,13 +227,10 @@ class LicenseKeyManager(models.Manager):
         ids = list(LicenseAssignment.objects.filter(**filter_assignment).values_list('license_key_id', flat=True))
         if include_id and include_id in ids:
             ids.remove(include_id)
-        platforms = [LicensedSoftware.PLATFORM_ALL]
-        if platform_id:
-            platforms.append(platform_id)
         return (self.select_related('licensed_software')
                     .exclude(pk__in=ids)
                     .filter(
-                        licensed_software__platform__in=platforms,
+                        platforms=platform_id,
                         licensed_software__license_id=license_id,
                         licensed_software__software_id=software_id)
                     .order_by('activation_type'))
@@ -263,9 +248,10 @@ class LicenseKey(models.Model):
     )
     licensed_software = models.ForeignKey(
         'LicensedSoftware', on_delete=models.CASCADE)
-    serial_key = models.CharField(max_length=200, unique=True)
+    serial_key = models.CharField(max_length=200)
     activation_type = models.PositiveIntegerField(
         choices=ACTIVATION_TYPES, default=ACTIVATION_TYPE_VOLUME)
+    platforms = models.ManyToManyField('Platform')
 
     # Override default manager
     objects = LicenseKeyManager()
@@ -279,13 +265,14 @@ class LicenseKey(models.Model):
     def __str__(self):
         return self.serial_key
 
+    class Meta:
+        unique_together = ('licensed_software', 'serial_key')
+
 
 class LicenseAssignment(models.Model):
     user = models.ForeignKey('auth.User', on_delete=models.PROTECT)
     software = models.ForeignKey('Software', on_delete=models.PROTECT)
-    platform = models.PositiveIntegerField(
-        choices=LicensedSoftware.PLATFORMS[1:],
-        default=LicensedSoftware.PLATFORM_WINDOWS)
+    platform = models.ForeignKey('Platform', on_delete=models.PROTECT)
     license = models.ForeignKey(
         'License', blank=True, null=True, on_delete=models.PROTECT)
     license_key = models.ForeignKey(
