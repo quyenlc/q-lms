@@ -7,8 +7,8 @@ from django.utils import timezone
 from django.urls import reverse
 from django.db.models import Q
 
-from filer.fields.image import FilerImageField
-from filer.models.imagemodels import Image
+# from filer.fields.image import FilerImageField
+# from filer.models.imagemodels import Image
 
 
 class Supplier(models.Model):
@@ -85,9 +85,10 @@ class License(models.Model):
         (LICENSE_SUBSCRIPTION, 'Subscription-based'),
         (LICENSE_OEM, 'OEM'),
     )
+
     softwares = models.ManyToManyField(Software, through='LicensedSoftware')
     users = models.ManyToManyField(User, through='LicenseAssignment')
-    images = models.ManyToManyField(Image, through='LicenseImage')
+    # images = models.ManyToManyField(Image, through='LicenseImage')
     platforms = models.ManyToManyField(Platform)
 
     description = models.CharField(max_length=100)
@@ -207,7 +208,7 @@ class License(models.Model):
 
 
 class LicenseImage(models.Model):
-    image = FilerImageField()
+    # image = FilerImageField()
     license = models.ForeignKey('License')
 
     def __str__(self):

@@ -25,9 +25,9 @@ from license_manager.views import (
 )
 
 urlpatterns = [
-    url(r'^', include('filer.server.urls')),
+    # url(r'^', include('filer.server.urls')),
     url(r'^admin/', admin.site.urls),
-    url(r'^filer/', include('filer.urls')),
+    # url(r'^filer/', include('filer.urls')),
     url(r'^admin_tools/', include('admin_tools.urls')),
     url(r'^autocomplete/license_key/', LicenseKeyAutocomplete.as_view(), name='license_key_autocomplete'),
     url(r'^autocomplete/license/', LicenseAutocomplete.as_view(), name='license_autocomplete'),

@@ -155,7 +155,7 @@ class LicenseForm(forms.ModelForm):
 class LicenseAdmin(nested_admin.NestedModelAdmin):
     save_as = True
     form = LicenseForm
-    inlines = [LicensedSoftwareInline, LicenseImageInline]
+    # inlines = [LicensesSoftwareInline, LicenseImageInline]
     inlines = [PlatformInline, LicensedSoftwareInline]
     list_display = [
         'description', 'get_display_softwares',
