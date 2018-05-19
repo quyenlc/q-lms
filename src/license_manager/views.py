@@ -4,7 +4,7 @@ from django.utils.html import format_html
 
 from dal import autocomplete
 
-from .models import Software, License, LicenseKey, LicenseAssignment
+from .models import Software, License, LicenseKey, LicensedSoftware
 
 
 class LicenseAutocomplete(autocomplete.Select2QuerySetView):
@@ -15,9 +15,11 @@ class LicenseAutocomplete(autocomplete.Select2QuerySetView):
         software_id = self.forwarded.get('software', None)
         platform_id = self.forwarded.get('platform', None)
         license_id = self.forwarded.get('license', None)
+        platforms = [LicensedSoftware.PLATFORM_ALL]
         if software_id and platform_id:
+            platforms.append(platform_id)
             qs = License.objects.annotate(remaining=F('total') - F('used_total'))
-            f = Q(softwares=software_id) & (Q(platforms__isnull=True) | Q(platforms=platform_id))
+            f = Q(softwares=software_id) & Q(licensedsoftware__platform__in=platforms)
             sub_f = Q(remaining__gt=0)
             if license_id:
                 sub_f |= Q(pk=license_id)
@@ -61,6 +63,6 @@ class LicenseKeyAutocomplete(autocomplete.Select2QuerySetView):
             <strong>Type:</strong> {}'''
         return format_html(
             text, item.serial_key,
-            item.platform.name,
+            item.licensed_software.get_platform_display(),
             item.get_activation_type_display(),
         )

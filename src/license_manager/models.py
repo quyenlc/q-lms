@@ -59,16 +59,6 @@ class Software(models.Model):
 
 
 class Platform(models.Model):
-    PLATFORM_ALL = 1
-    PLATFORM_WINDOWS = 2
-    PLATFORM_MACOS = 3
-    PLATFORM_LINUX = 4
-    PLATFORMS = (
-        (PLATFORM_ALL, 'All'),
-        (PLATFORM_WINDOWS, 'Windows'),
-        (PLATFORM_MACOS, 'Mac OS'),
-        (PLATFORM_LINUX, 'Linux'),
-    )
     name = models.CharField(max_length=50)
 
     def __str__(self):
@@ -89,7 +79,6 @@ class License(models.Model):
     softwares = models.ManyToManyField(Software, through='LicensedSoftware')
     users = models.ManyToManyField(User, through='LicenseAssignment')
     # images = models.ManyToManyField(Image, through='LicenseImage')
-    platforms = models.ManyToManyField(Platform)
 
     description = models.CharField(max_length=100)
     active = models.BooleanField(default=True)
@@ -216,14 +205,26 @@ class LicenseImage(models.Model):
 
 
 class LicensedSoftware(models.Model):
+    PLATFORM_ALL = 1
+    PLATFORM_WINDOWS = 2
+    PLATFORM_MACOS = 3
+    PLATFORM_LINUX = 4
+    PLATFORMS = (
+        (PLATFORM_ALL, 'All'),
+        (PLATFORM_WINDOWS, 'Windows'),
+        (PLATFORM_MACOS, 'Mac OS'),
+        (PLATFORM_LINUX, 'Linux'),
+    )
+
     license = models.ForeignKey('License', on_delete=models.CASCADE)
     software = models.ForeignKey('Software', on_delete=models.CASCADE)
+    platform = models.PositiveIntegerField(choices=PLATFORMS, default=PLATFORM_WINDOWS)
 
     def __str__(self):
         return str(self.software)
 
     class Meta:
-        unique_together = ("license", "software")
+        unique_together = ("license", "software", "platform")
 
 
 class LicenseKeyManager(models.Manager):
@@ -238,13 +239,16 @@ class LicenseKeyManager(models.Manager):
         ids = list(LicenseAssignment.objects.filter(**filter_assignment).values_list('license_key_id', flat=True))
         if include_id and include_id in ids:
             ids.remove(include_id)
-        filter_platform = Q(platform__isnull=True)
+        platforms = [LicensedSoftware.PLATFORM_ALL]
         if platform_id:
-            filter_platform |= Q(platform=platform_id)
-        return self.exclude(pk__in=ids).filter(
-            filter_platform,
-            licensed_software__license_id=license_id,
-            licensed_software__software_id=software_id).order_by('activation_type')
+            platforms.append(platform_id)
+        return (self.select_related('licensed_software')
+                    .exclude(pk__in=ids)
+                    .filter(
+                        licensed_software__platform__in=platforms,
+                        licensed_software__license_id=license_id,
+                        licensed_software__software_id=software_id)
+                    .order_by('activation_type'))
 
 
 class LicenseKey(models.Model):
@@ -259,10 +263,9 @@ class LicenseKey(models.Model):
     )
     licensed_software = models.ForeignKey(
         'LicensedSoftware', on_delete=models.CASCADE)
-    serial_key = models.CharField(max_length=200)
+    serial_key = models.CharField(max_length=200, unique=True)
     activation_type = models.PositiveIntegerField(
         choices=ACTIVATION_TYPES, default=ACTIVATION_TYPE_VOLUME)
-    platform = models.ForeignKey('Platform', blank=True, null=True, on_delete=models.PROTECT)
 
     # Override default manager
     objects = LicenseKeyManager()
@@ -276,14 +279,13 @@ class LicenseKey(models.Model):
     def __str__(self):
         return self.serial_key
 
-    class Meta:
-        unique_together = ("serial_key", "platform")
-
 
 class LicenseAssignment(models.Model):
     user = models.ForeignKey('auth.User', on_delete=models.PROTECT)
     software = models.ForeignKey('Software', on_delete=models.PROTECT)
-    platform = models.ForeignKey('Platform', on_delete=models.PROTECT)
+    platform = models.PositiveIntegerField(
+        choices=LicensedSoftware.PLATFORMS[1:],
+        default=LicensedSoftware.PLATFORM_WINDOWS)
     license = models.ForeignKey(
         'License', blank=True, null=True, on_delete=models.PROTECT)
     license_key = models.ForeignKey(
