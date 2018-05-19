@@ -1,11 +1,11 @@
 from django.db import models
 from django.db import transaction
 from django.db import IntegrityError
+from django.db.models import F
 from django.contrib.auth.models import User
 from django.utils.html import format_html
 from django.utils import timezone
 from django.urls import reverse
-from django.db.models import Q
 
 # from filer.fields.image import FilerImageField
 # from filer.models.imagemodels import Image
