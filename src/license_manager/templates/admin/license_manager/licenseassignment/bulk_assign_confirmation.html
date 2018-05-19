@@ -17,7 +17,7 @@
 <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
 &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
 &rsaquo; {% if has_change_permission %}<a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>{% else %}{{ opts.verbose_name_plural|capfirst }}{% endif %}
-&rsaquo; Bulk assign license
+&rsaquo; Bulk assign licenses
 </div>
 {% endblock %}
 
@@ -25,8 +25,8 @@
 <div id="content-main">
     <div style="margin-bottom: 2em">
         <div style="margin-bottom: 2em">
-            <h3>Softwares and licenses will be assigned to each user as bellow:</h3>
-            <small>Note: OEM licenses could not be assigned automatically, you have to assign OEM license manually.</small>
+            <h1>Softwares and licenses will be assigned to each user as bellow</h1>
+            <p>Note: OEM licenses could not be assigned automatically, you have to assign OEM license manually.</p>
         </div>
         <div>
             <table style="width: 100%">

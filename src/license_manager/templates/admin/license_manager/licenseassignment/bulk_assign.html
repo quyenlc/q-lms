@@ -17,13 +17,14 @@
 <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
 &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
 &rsaquo; {% if has_change_permission %}<a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>{% else %}{{ opts.verbose_name_plural|capfirst }}{% endif %}
-&rsaquo; Bulk assign license
+&rsaquo; Bulk assign licenses
 </div>
 {% endblock %}
 
 {% block content %}<div id="content-main">
 <div>
-    License will be assigned automatically.
+    <h1>Bulk assign licenses</h1>
+    <p>Softwares, licenses (except OEM licenses) and serial keys will be automatically assigned to each selected users.</p>
 </div>
 <form action="" method="post" id="bulk_assign_form" novalidate>{% csrf_token %}{% block form_top %}{% endblock %}
 <div>
