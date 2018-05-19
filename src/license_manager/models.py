@@ -3,9 +3,7 @@ from django.db import transaction
 from django.db import IntegrityError
 from django.db.models import F
 from django.contrib.auth.models import User
-from django.utils.html import format_html
 from django.utils import timezone
-from django.urls import reverse
 
 # from filer.fields.image import FilerImageField
 # from filer.models.imagemodels import Image
@@ -130,15 +128,6 @@ class License(models.Model):
             else:
                 raise IntegrityError("Could not unassign license, unassign amount is too large.")
 
-    def get_display_softwares(self):
-        names = []
-        for software in self.softwares.all():
-            names.append(str(software))
-        return format_html("<br>".join(names))
-
-    get_display_softwares.short_description = "Products"
-    get_display_softwares.allow_tags = True
-
     def get_license_summary(queryset=None):
         if not queryset:
             queryset = License.objects.all()
@@ -167,25 +156,6 @@ class License(models.Model):
         if days < 0:
             days = 0
         return days
-
-    def linked_used_total(self):
-        if self.used_total == 0:
-            return 0
-        color = 'limegreen'
-        if self.used_total == self.total:
-            color = 'red'
-        opts = self._meta
-        url = reverse(
-            'admin:%s_%s_changelist' %
-            (opts.app_label, 'licenseassignment')
-        )
-        url += '?license__id__exact=%d' % self.pk
-        return format_html(
-            '<a href="{}" style="color: {}" title="Click here to see the users using this license."><strong>{}</strong></a>',
-            url, color, self.used_total
-        )
-    linked_used_total.short_description = 'used total'
-    linked_used_total.admin_order_field = 'used_total'
 
     def save(self, *args, **kwargs):
         self.description = "{} {} Licenses".format(
@@ -327,21 +297,8 @@ class LicenseAssignment(models.Model):
             if self.license_id:
                 self.license.unassign()
 
-    def linked_license(self):
-        if not self.license_id:
-            return
-        url = reverse(
-            'admin:%s_%s_changelist' %
-            (self._meta.app_label, 'license'),
-            # args=[self.license_id]
-        )
-        url += '?pk__exact=%d' % self.license_id
-        return format_html('<a href="{}">{}</a>', url, self.license)
-
     def __str__(self):
         return "{} for {}".format(self.software.get_full_name(), self.user.get_username())
-    linked_license.short_description = 'license'
-    linked_license.admin_order_field = 'license'
 
 
 class LicenseSummary(License):

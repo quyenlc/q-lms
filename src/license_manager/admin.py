@@ -9,6 +9,7 @@ from django.contrib.auth.models import User
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.core.exceptions import PermissionDenied
 from django.template.response import SimpleTemplateResponse, TemplateResponse
+from django.utils.html import format_html
 
 from django_admin_listfilter_dropdown.filters import RelatedDropdownFilter
 
@@ -105,8 +106,36 @@ class LicenseAdmin(nested_admin.NestedModelAdmin):
                 'total', 'license_number', 'supplier', 'purchased_date',
                 'started_date', 'ended_date', 'note']
 
+    def get_display_softwares(self, obj):
+        names = []
+        for software in obj.softwares.all():
+            names.append(str(software))
+        return format_html("<br>".join(names))
+    get_display_softwares.short_description = "Products"
+    get_display_softwares.allow_tags = True
+
     def remaining(self, obj):
         return obj.remaining
+    remaining.admin_order_field = 'remaining'
+
+    def linked_used_total(self, obj):
+        if obj.used_total == 0:
+            return 0
+        color = 'limegreen'
+        if obj.used_total == obj.total:
+            color = 'red'
+        opts = obj._meta
+        url = reverse(
+            'admin:%s_%s_changelist' %
+            (opts.app_label, 'licenseassignment')
+        )
+        url += '?license__id__exact=%d' % obj.pk
+        return format_html(
+            '<a href="{}" style="color: {}" title="Click here to see the users using this license."><strong>{}</strong></a>',
+            url, color, obj.used_total
+        )
+    linked_used_total.short_description = 'used total'
+    linked_used_total.admin_order_field = 'used_total'
 
 
 class LicenseAssignmentAdmin(admin.ModelAdmin):
@@ -122,6 +151,19 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
     )
     ordering = ('user__username',)
     actions = [delete_license_assignments]
+
+    def linked_license(self, obj):
+        if not obj.license_id:
+            return
+        url = reverse(
+            'admin:%s_%s_changelist' %
+            (obj._meta.app_label, 'license'),
+            # args=[self.license_id]
+        )
+        url += '?pk__exact=%d' % obj.license_id
+        return format_html('<a href="{}">{}</a>', url, obj.license)
+    linked_license.short_description = 'license'
+    linked_license.admin_order_field = 'license'
 
     def get_serial_key(self, obj):
         if obj.license_key:
