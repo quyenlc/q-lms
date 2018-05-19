@@ -13,14 +13,15 @@ class LicenseAutocomplete(autocomplete.Select2QuerySetView):
         if not self.request.user.is_authenticated:
             return License.objects.none()
         software_id = self.forwarded.get('software', None)
+        platform_id = self.forwarded.get('platform', None)
         license_id = self.forwarded.get('license', None)
-
-        if software_id:
-            qs = License.objects.annotate(remaining=F('total') - F('used_total')).filter(softwares=software_id).order_by('-used_total')
+        if software_id and platform_id:
+            qs = License.objects.annotate(remaining=F('total') - F('used_total'))
+            f = Q(softwares=software_id) & (Q(platforms__isnull=True) | Q(platforms=platform_id))
+            sub_f = Q(remaining__gt=0)
             if license_id:
-                return qs.filter(Q(remaining__gt=0) | Q(pk=license_id))
-            else:
-                return qs.filter(remaining__gt=0)
+                sub_f |= Q(pk=license_id)
+            return qs.filter(f & sub_f).order_by('-used_total')
         else:
             return License.objects.none()
 
@@ -50,8 +51,9 @@ class LicenseKeyAutocomplete(autocomplete.Select2QuerySetView):
             return LicenseKey.objects.none()
         software_id = self.forwarded.get('software', None)
         license_id = self.forwarded.get('license', None)
+        platform_id = self.forwarded.get('platform', None)
         license_key_id = self.forwarded.get('license_key', None)
-        return LicenseKey.objects.get_available_keys(software_id, license_id, license_key_id)
+        return LicenseKey.objects.get_available_keys(software_id, license_id, platform_id, license_key_id)
 
     def get_result_label(self, item):
         text = '''{}<br>
@@ -59,6 +61,6 @@ class LicenseKeyAutocomplete(autocomplete.Select2QuerySetView):
             <strong>Type:</strong> {}'''
         return format_html(
             text, item.serial_key,
-            item.get_platform_display(),
+            item.platform.name,
             item.get_activation_type_display(),
         )

@@ -19,7 +19,7 @@ import nested_admin
 
 from .models import (
     Supplier, SoftwareFamily, Software, LicenseImage, LicenseKey,
-    License, LicensedSoftware, LicenseAssignment, LicenseSummary)
+    Platform, License, LicensedSoftware, LicenseAssignment, LicenseSummary)
 from .actions import delete_license_assignments
 
 
@@ -79,6 +79,19 @@ class LicenseImageInline(admin.TabularInline):
     extra = 1
     verbose_name = 'image'
     verbose_name_plural = 'images'
+
+
+class PlatformInline(nested_admin.NestedTabularInline):
+    model = License.platforms.through
+    model._meta.verbose_name = "platform"
+    model._meta.verbose_name_plural = "Supported platforms"
+    extra = 1
+
+
+class PlatformAdmin(admin.ModelAdmin):
+    model = Platform
+    list_display = ['name']
+    search_fields = ['name']
 
 
 class LicenseForm(forms.ModelForm):
@@ -143,6 +156,7 @@ class LicenseAdmin(nested_admin.NestedModelAdmin):
     save_as = True
     form = LicenseForm
     inlines = [LicensedSoftwareInline, LicenseImageInline]
+    inlines = [PlatformInline, LicensedSoftwareInline]
     list_display = [
         'description', 'get_display_softwares',
         'license_number', 'total', 'linked_used_total',
@@ -175,25 +189,26 @@ class LicenseAssignmentForm(forms.ModelForm):
         super(LicenseAssignmentForm, self).__init__(*args, **kwargs)
         license_widget = self.fields['license'].widget.widget
         license_key_widget = self.fields['license_key'].widget.widget
+        license_forward = ['software', 'platform']
+        license_key_forward = ['software', 'license', 'platform']
         if self.instance.pk:
-            license_widget.forward = [
-                'software',
-                forward.Const(self.instance.license_id, 'license'),
-            ]
-            license_key_widget.forward = [
-                'software',
-                'license',
-                forward.Const(self.instance.license_key_id, 'license_key'),
-            ]
-        else:
-            license_widget.forward = ['software']
-            license_key_widget.forward = ['software', 'license']
+            license_forward.append(
+                forward.Const(self.instance.license_id, 'license'))
+            license_key_forward.append(
+                forward.Const(self.instance.license_key_id, 'license_key'))
+        license_widget.forward = license_forward
+        license_key_widget.forward = license_key_forward
 
     def clean_license(self):
         lic = self.cleaned_data.get('license', None)
 
         if not lic:
             return None
+
+        platform = self.cleaned_data.get('platform', None)
+        platforms = list(lic.platforms.all().values_list('pk', flat=True))
+        if not platforms or platform not in platforms:
+            raise forms.ValidationError("Platform mismatch")
 
         soft = self.cleaned_data.get('software', None)
         if soft and not lic.softwares.filter(pk=soft.id):
@@ -209,6 +224,11 @@ class LicenseAssignmentForm(forms.ModelForm):
         lic_key = self.cleaned_data.get('license_key', None)
         if not lic_key:
             return None
+
+        platform = self.cleaned_data.get('platform', None)
+        if lic_key.platform and platform != lic_key.platform:
+            raise forms.ValidationError("Platform mismatch")
+
         soft = self.cleaned_data.get('software', None)
         lic = self.cleaned_data.get('license', None)
         lic_soft = lic_key.licensed_software
@@ -256,6 +276,9 @@ class LicenseBulkAssignForm(forms.Form):
             is_stacked=False,
         )
     )
+    platform = forms.ModelChoiceField(
+        queryset=Platform.objects.all()
+    )
 
     class Media:
         css = {
@@ -265,13 +288,14 @@ class LicenseBulkAssignForm(forms.Form):
 
 class LicenseAssignmentAdmin(admin.ModelAdmin):
     form = LicenseAssignmentForm
-    list_display = ['id', 'user', 'software', 'linked_license', 'get_serial_key']
-    list_select_related = ['user', 'software', 'license', 'license_key', 'software__software_family']
+    list_display = ['id', 'user', 'software', 'linked_license', 'platform', 'get_serial_key']
+    list_select_related = ['user', 'software', 'license', 'platform', 'license_key', 'software__software_family']
     list_filter = (
         ('user', RelatedDropdownFilter),
         ('software__software_family', RelatedDropdownFilter),
         ('software', RelatedDropdownFilter),
         ('license', RelatedDropdownFilter),
+        ('platform', RelatedDropdownFilter),
     )
     actions = [delete_license_assignments]
 
@@ -309,6 +333,7 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
                 licenses = {}
                 license_keys = {}
                 softwares = form.cleaned_data['softwares']
+                platform = int(form.cleaned_data['platform'])
                 rels = (LicensedSoftware.objects.select_related('license')
                                                 .annotate(remaining=F('license__total') - F('license__used_total'))
                                                 .filter(software__in=softwares, remaining__gt=0)
@@ -325,7 +350,11 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
                         licenses[obj.license_id] = obj.license
 
                     pk = "{}_{}".format(obj.software_id, obj.license_id)
-                    license_keys[pk] = list(LicenseKey.objects.filter(licensed_software=obj.pk).order_by('activation_type'))
+                    q = Q(
+                        licensed_software=obj.pk,
+                        platform__in=(LicenseKey.PLATFORM_ALL, platform)
+                    )
+                    license_keys[pk] = list(LicenseKey.objects.filter(q).order_by('activation_type', 'platform'))
 
                 assignments = []
                 for user in form.cleaned_data['users']:
@@ -364,6 +393,7 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
                             obj = LicenseAssignment(
                                 user_id=assignment['user'].pk,
                                 software_id=assignment['software'].pk,
+                                platform=platform,
                                 license_id=license.pk if license else None,
                                 license_key_id=license_key.pk if license_key else None
                             )
@@ -379,10 +409,13 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
                     )
                     return HttpResponseRedirect(post_url)
                 else:
+                    platform_display = [text for (code, text) in LicenseKey.PLATFORMS if platform == code]
                     context = {
                         **self.admin_site.each_context(request),
                         'users': form.cleaned_data['users'],
                         'softwares': form.cleaned_data['softwares'],
+                        'platform': platform,
+                        'platform_display': platform_display[0],
                         'assignments': assignments,
                         'opts': opts,
                         'media': self.media,
@@ -396,7 +429,7 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
 
         adminForm = admin.helpers.AdminForm(
             form=form,
-            fieldsets=[(None, {'fields': ('users', 'softwares',)})],
+            fieldsets=[(None, {'fields': ('users', 'softwares', 'platform')})],
             prepopulated_fields={},
             model_admin=self)
         media = self.media + adminForm.media
@@ -437,6 +470,7 @@ class LicenseSummaryAdmin(admin.ModelAdmin):
 admin.site.register(Supplier, SupplierAdmin)
 admin.site.register(SoftwareFamily, SoftwareFamilyAdmin)
 admin.site.register(Software, SoftwareAdmin)
+admin.site.register(Platform, PlatformAdmin)
 admin.site.register(License, LicenseAdmin)
 admin.site.register(LicenseAssignment, LicenseAssignmentAdmin)
 admin.site.register(LicenseSummary, LicenseSummaryAdmin)
