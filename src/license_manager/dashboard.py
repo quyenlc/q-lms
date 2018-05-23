@@ -41,22 +41,21 @@ class CustomIndexDashboard(Dashboard):
             ]
         ))
 
-        # append an app list module for "Applications"
         self.children.append(modules.ModelList(
             _('License Manager'),
             (
-                'license_manager.models.LicenseAssignment',
                 'license_manager.models.License',
-                'license_manager.models.Software',
-                'license_manager.models.SoftwareFamily',
-                'license_manager.models.Supplier',
+                'license_manager.models.LicenseAssignment',
             ),
         ))
 
         # append an app list module for "Administration"
         self.children.append(modules.AppList(
             _('Administration'),
-            models=('django.contrib.*',),
+            models=(
+                'django.contrib.*',
+                'filer.*',
+            ),
         ))
 
         # append a recent actions module
@@ -102,13 +101,6 @@ class CustomAppIndexDashboard(AppIndexDashboard):
 
     def __init__(self, *args, **kwargs):
         AppIndexDashboard.__init__(self, *args, **kwargs)
-        self.models = (
-            'license_manager.models.LicenseAssignment',
-            'license_manager.models.License',
-            'license_manager.models.Software',
-            'license_manager.models.SoftwareFamily',
-            'license_manager.models.Supplier',
-        )
         # append a model list module and a recent actions module
         self.children += [
             modules.ModelList(self.app_title, self.models),

@@ -24,21 +24,21 @@ class CustomMenu(Menu):
         self.children += [
             items.MenuItem(_('Dashboard'), reverse('admin:index')),
             items.Bookmarks(),
-            items.ModelList(
-                _('License Manager'),
-                (
-                    'license_manager.models.LicenseAssignment',
-                    'license_manager.models.License',
-                    'license_manager.models.Software',
-                    'license_manager.models.SoftwareFamily',
-                    'license_manager.models.Supplier',
-                    'license_manager.models.LicenseSummary',
-                ),
-            ),
             items.AppList(
                 _('Administration'),
                 models=('django.contrib.*',)
-            )
+            ),
+            items.ModelList(
+                _('License Manager'),
+                (
+                    'license_manager.models.License',
+                    'license_manager.models.LicenseAssignment',
+                    'license_manager.models.LicenseSummary',
+                    'license_manager.models.Software',
+                    'license_manager.models.SoftwareFamily',
+                    'license_manager.models.Supplier',
+                ),
+            ),
         ]
 
     def init_with_context(self, context):
