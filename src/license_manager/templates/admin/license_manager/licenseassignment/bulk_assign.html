@@ -23,8 +23,11 @@
 
 {% block content %}<div id="content-main">
 <div>
-    <h1>Bulk assign licenses</h1>
-    <p>Softwares, licenses (except OEM licenses) and serial keys will be automatically assigned to each selected users.</p>
+    <ul>
+        <li>Select users, a platform, softwares and then click Next.</li>
+        <li>The softwares listed will be changed depends on the selected platform. (A software can only be available on a certain platform)</li>
+        <li>Licenses (except OEM licenses) and serial keys will be automatically assigned to each selected users if they are available.</li>
+    </ul>
 </div>
 <form action="" method="post" id="bulk_assign_form" novalidate>{% csrf_token %}{% block form_top %}{% endblock %}
 <div>

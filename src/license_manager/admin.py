@@ -190,6 +190,7 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
         if not self.has_add_permission(request):
             raise PermissionDenied
         opts = self.model._meta
+        title = 'Bulk assign licenses'
         if request.method != 'POST':
             form = LicenseBulkAssignForm()
         else:
@@ -273,6 +274,7 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
                 else:
                     context = {
                         **self.admin_site.each_context(request),
+                        'title': title,
                         'users': form.cleaned_data['users'],
                         'softwares': form.cleaned_data['softwares'],
                         'platform': platform,
@@ -295,6 +297,7 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
         media = self.media + adminForm.media
         context = {
             **self.admin_site.each_context(request),
+            'title': title,
             'adminform': adminForm,
             'opts': opts,
             'media': media,
