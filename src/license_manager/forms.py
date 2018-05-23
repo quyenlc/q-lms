@@ -21,16 +21,16 @@ class SoftwareForm(forms.ModelForm):
 
 
 class LicenseKeyForm(forms.ModelForm):
-    def clean_platforms(self):
-        platforms = self.cleaned_data.get('platforms', None)
-        if not platforms:
-            return None
-        sw = self.instance.licensed_software.software
-        for p in platforms:
-            if not sw.platforms.filter(pk=p.pk).exists():
-                raise forms.ValidationError("%s is not available on %s platform" % (str(sw), p.name))
+    # def clean_platforms(self):
+    #     platforms = self.cleaned_data.get('platforms', None)
+    #     if not platforms:
+    #         return None
+    #     sw = self.instance.licensed_software.software
+    #     for p in platforms:
+    #         if not sw.platforms.filter(pk=p.pk).exists():
+    #             raise forms.ValidationError("%s is not available on %s platform" % (str(sw), p.name))
 
-        return platforms
+    #     return platforms
 
     class Meta:
         model = LicenseKey
