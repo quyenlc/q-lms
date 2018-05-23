@@ -140,10 +140,10 @@ USE_TZ = True
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 STATIC_URL = '/static/'
 
-ADMIN_TOOLS_MENU = 'license_manager.menu.CustomMenu'
+ADMIN_TOOLS_MENU = 'menu.CustomMenu'
 
-ADMIN_TOOLS_INDEX_DASHBOARD = 'license_manager.dashboard.CustomIndexDashboard'
-ADMIN_TOOLS_APP_INDEX_DASHBOARD = 'license_manager.dashboard.CustomAppIndexDashboard'
+ADMIN_TOOLS_INDEX_DASHBOARD = 'dashboard.CustomIndexDashboard'
+ADMIN_TOOLS_APP_INDEX_DASHBOARD = 'dashboard.CustomAppIndexDashboard'
 
 EMAIL_HOST = '172.21.149.150'
 EMAIL_USE_TLS = False
