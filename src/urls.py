@@ -48,5 +48,5 @@ if settings.DEBUG:
         url(r'^__debug__/', include(debug_toolbar.urls)),
     ] + urlpatterns
 
-admin.site.site_header = 'Punch Entertainment'
-admin.site.site_title = 'Punch Entertainment'
+admin.site.site_header = 'PunchVN Infosys'
+admin.site.site_title = 'PunchVN Infosys'
