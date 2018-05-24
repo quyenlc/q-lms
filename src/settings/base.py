@@ -23,7 +23,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = 'hg0bz+yl(ene(*f@nzs=36(&c*toto1smxlqyl5z-*b_hi*xc%'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get("DEBUG", False)
 
 ALLOWED_HOSTS = []
 
@@ -33,9 +33,9 @@ ALLOWED_HOSTS = []
 INSTALLED_APPS = [
     'license_manager',
     'nested_admin',
-    # 'easy_thumbnails',
-    # 'filer',
-    # 'mptt',
+    'easy_thumbnails',
+    'filer',
+    'mptt',
     'dal',
     'dal_select2',
     'django_admin_listfilter_dropdown',
@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'admin_tools.theming',
     'admin_tools.menu',
     'admin_tools.dashboard',
+    'admin_view_permission',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

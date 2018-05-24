@@ -18,6 +18,9 @@ services:
       - ./smedia/:/smedia
     ports:
       - "8000:8000"
+    environment:
+      - ENV=docker
+      - DEBUG
     depends_on:
       - "db"
     restart: always
