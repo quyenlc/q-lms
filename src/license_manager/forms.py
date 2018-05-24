@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib.auth.models import User
+from django.contrib.admin.widgets import FilteredSelectMultiple
 
 from dal import autocomplete
 from dal import forward
@@ -227,11 +228,9 @@ class LicenseAssignmentForm(forms.ModelForm):
 class LicenseBulkAssignForm(forms.Form):
     users = forms.ModelMultipleChoiceField(
         queryset=User.objects.all(),
-        widget=autocomplete.ModelSelect2Multiple(
-            url="user_autocomplete",
-            attrs={
-                'data-placeholder': 'Select one or more users',
-            }
+        widget=FilteredSelectMultiple(
+            "users",
+            is_stacked=False,
         )
     )
     platform = forms.ModelChoiceField(
