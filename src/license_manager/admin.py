@@ -94,6 +94,27 @@ class LicenseAdmin(nested_admin.NestedModelAdmin):
     )
     autocomplete_fields = ['supplier', 'software_family']
 
+    def get_fieldsets(self, request, obj):
+        basic_fieldset = ()
+        if obj:
+            basic_fieldset = ('description', 'software_family', ('license_type', 'oem_device'), ('total', 'used_total'))
+        else:
+            basic_fieldset = ('software_family', ('license_type', 'oem_device'), 'total')
+        return (
+            (None, {
+                'fields': basic_fieldset
+            }),
+            ('Additional infos', {
+                'fields': ('supplier', 'license_number')
+            }),
+            ('Important dates', {
+                'fields': ('purchased_date', 'started_date', 'ended_date')
+            }),
+            (None, {
+                'fields': ('note', )
+            })
+        )
+
     def get_fields(self, request, obj):
         if obj:
             return [
