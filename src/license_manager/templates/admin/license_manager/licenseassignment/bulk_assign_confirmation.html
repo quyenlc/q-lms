@@ -37,6 +37,7 @@
                         <th>Platform</th>
                         <th>License</th>
                         <th>License Key</th>
+                        <th>Note</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -55,6 +56,7 @@
                         {% else %}
                         <td><span style="color: red">N/A</span></td>
                         {% endif %}
+                        <td>{% if assign.skip %}<span style="color: red">Skip {% if assign.duplicate %}(Duplicate){% endif %}</span>{% else %}<span style="color: limegreen">OK {% if assign.pk %}(Update){% else %}(New){% endif %}</span>{% endif %}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -71,6 +73,8 @@
                 <input type="hidden" name="softwares" value="{{ software.pk }}" />
                 {% endfor %}
                 <input type="hidden" name="platform" value="{{ platform.pk }}" />
+                <input type="hidden" name="avoid_duplicates" value="{{ avoid_duplicates }}" />
+                <input type="hidden" name="skip_not_enough" value="{{ skip_not_enough }}" />
                 <input type="hidden" name="_confirmed" />
                 <input type="submit" value="{% trans "Confirm" %}" />
                 <a href="#" class="button cancel-link">{% trans "Cancel" %}</a>

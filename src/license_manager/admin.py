@@ -207,80 +207,143 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
             del actions['delete_selected']
         return actions
 
+    def get_lookup_tables(self, softwares, platform):
+        """Create lookup tables for looking up licenses and license keys for
+        a software if knew its id.
+        """
+        software_license_lut = {}
+        license_lut = {}
+        license_key_lut = {}
+        # relations between software and license
+        rels = (
+            LicensedSoftware.objects
+            .select_related('license')
+            .annotate(remaining=F('license__total') - F('license__used_total'))
+            .filter(software__in=softwares, remaining__gt=0)
+            .exclude(license__license_type=License.LICENSE_OEM)
+            .order_by('remaining')
+        )
+        # populate the lookup table of softwares and licenses
+        # a key is a software_id
+        # a value is an array contains license_ids coresponding to the software_id
+        for obj in rels:
+            if obj.software_id in software_license_lut:
+                software_license_lut[obj.software_id].append(obj.license_id)
+            else:
+                software_license_lut[obj.software_id] = [obj.license_id]
+
+            # populate the lookup table for licenses
+            if obj.license_id not in license_lut:
+                obj.license.remaining = obj.remaining
+                license_lut[obj.license_id] = obj.license
+
+            # populate the license keys lookup dict
+            # a key is a combination of software_id and license_id
+            # a value is license keys queryset corresponding to the software and the license
+            combined_pk = "{}_{}".format(obj.software_id, obj.license_id)
+            license_key_lut[combined_pk] = list(
+                LicenseKey.objects
+                .filter(
+                    licensed_software=obj.pk,
+                    platforms=platform)
+                .order_by('activation_type')
+            )
+        return software_license_lut, license_lut, license_key_lut
+
     def bulk_assign_view(self, request):
         if not self.has_add_permission(request):
             raise PermissionDenied
         opts = self.model._meta
         title = 'Bulk assign licenses'
         if request.method != 'POST':
-            form = LicenseBulkAssignForm()
+            form = LicenseBulkAssignForm(initial={
+                    'avoid_duplicates': True,
+                    'skip_not_enough': True
+                }
+            )
         else:
             form = LicenseBulkAssignForm(request.POST)
             if form.is_valid():
-                maps = {}
-                licenses = {}
-                license_keys = {}
+                skip_not_enough = form.cleaned_data['skip_not_enough']
+                avoid_duplicates = form.cleaned_data['avoid_duplicates']
                 softwares = form.cleaned_data['softwares']
                 platform = form.cleaned_data['platform']
-                rels = (LicensedSoftware.objects.select_related('license')
-                                                .annotate(remaining=F('license__total') - F('license__used_total'))
-                                                .filter(software__in=softwares, remaining__gt=0)
-                                                .exclude(license__license_type=License.LICENSE_OEM)
-                                                .order_by('remaining'))
-                for obj in rels:
-                    if obj.software_id in maps:
-                        maps[obj.software_id].append(obj.license_id)
-                    else:
-                        maps[obj.software_id] = [obj.license_id]
 
-                    if obj.license_id not in licenses:
-                        obj.license.remaining = obj.remaining
-                        licenses[obj.license_id] = obj.license
-
-                    pk = "{}_{}".format(obj.software_id, obj.license_id)
-                    license_keys[pk] = list(LicenseKey.objects.filter(licensed_software=obj.pk, platforms=platform).order_by('activation_type'))
-
+                maps, licenses, license_keys = self.get_lookup_tables(softwares, platform)
                 assignments = []
                 for user in form.cleaned_data['users']:
                     for sw in softwares:
                         lic = None
                         lic_key = None
+                        duplicate = False
+                        assignment_pk = None
                         if sw.id in maps:
+                            # loop through the licenses of the software until found a valid one
                             while maps[sw.id]:
                                 lic_id = maps[sw.id][0]
                                 if lic_id in licenses and licenses[lic_id].remaining > 0:
                                     lic = licenses[lic_id]
-                                    lic.remaining -= 1
                                     break
                                 else:
+                                    # delete invalid license to avoid it in next loop
                                     del maps[sw.id][0]
                                     continue
-                        if lic:
-                            pk = "{}_{}".format(sw.id, lic.id)
-                            if pk in license_keys and license_keys[pk]:
-                                lic_key = license_keys[pk][0]
+
+                        skip = True if not lic and skip_not_enough else False
+                        existing_assignment = (
+                            LicenseAssignment
+                            .objects
+                            .filter(
+                                user=user, software=sw, platform=platform)
+                            .order_by('-license')
+                            .first()
+                        )
+                        if existing_assignment:
+                            # if user has been assigned software but not license
+                            # try to assign a license to the user
+                            if not existing_assignment.license and lic:
+                                assignment_pk = existing_assignment.pk
+                            elif avoid_duplicates:
+                                # otherwise we should skip to avoid duplicate records
+                                duplicate = True
+                                skip = True
+
+                        # try to find a license key
+                        if lic and not skip:
+                            lic.remaining -= 1
+                            combined_pk = "{}_{}".format(sw.id, lic.id)
+                            if combined_pk in license_keys and license_keys[combined_pk]:
+                                lic_key = license_keys[combined_pk][0]
                                 if lic_key.activation_type == LicenseKey.ACTIVATION_TYPE_SINGLE:
-                                    del license_keys[pk][0]
+                                    del license_keys[combined_pk][0]
 
                         assignments.append({
+                            'pk': assignment_pk,
                             'user': user,
                             'software': sw,
                             'license': lic,
                             'license_key': lic_key,
+                            'skip': skip,
+                            'duplicate': duplicate,
                         })
 
                 if '_confirmed' in request.POST:
                     with transaction.atomic():
                         for assignment in assignments:
+                            if assignment['skip']:
+                                continue
                             license = assignment['license']
                             license_key = assignment['license_key']
-                            obj = LicenseAssignment(
-                                user_id=assignment['user'].pk,
-                                software_id=assignment['software'].pk,
-                                platform_id=platform.pk,
-                                license_id=license.pk if license else None,
-                                license_key_id=license_key.pk if license_key else None
-                            )
+                            kwargs = {
+                                'user_id': assignment['user'].pk,
+                                'software_id': assignment['software'].pk,
+                                'platform_id': platform.pk,
+                                'license_id': license.pk if license else None,
+                                'license_key_id': license_key.pk if license_key else None
+                            }
+                            if assignment['pk']:
+                                kwargs['pk'] = assignment['pk']
+                            obj = LicenseAssignment(**kwargs)
                             obj.save()
                     post_url = reverse(
                         'admin:%s_%s_changelist' % (opts.app_label, opts.model_name),
@@ -298,6 +361,8 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
                         'title': title,
                         'users': form.cleaned_data['users'],
                         'softwares': form.cleaned_data['softwares'],
+                        'avoid_duplicates': avoid_duplicates,
+                        'skip_not_enough': skip_not_enough,
                         'platform': platform,
                         'assignments': assignments,
                         'opts': opts,
@@ -312,7 +377,11 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
 
         adminForm = admin.helpers.AdminForm(
             form=form,
-            fieldsets=[(None, {'fields': ('users', 'platform', 'softwares')})],
+            fieldsets=[
+                (None, {
+                    'fields': ('users', 'platform', 'softwares', 'avoid_duplicates', 'skip_not_enough')
+                }),
+            ],
             prepopulated_fields={},
             model_admin=self)
         media = self.media + adminForm.media

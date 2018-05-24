@@ -254,6 +254,13 @@ class LicenseBulkAssignForm(forms.Form):
         )
     )
 
+    avoid_duplicates = forms.BooleanField(
+        label='Avoid duplicates',
+        help_text='Avoid assign a software on a platform for a user multiple times.')
+    skip_not_enough = forms.BooleanField(
+        label='Skip if not enough license',
+        help_text='If a software runs out of license, don\'t assign that software to users.')
+
     def clean_softwares(self):
         softwares = self.cleaned_data.get('softwares', None)
         if not softwares:
