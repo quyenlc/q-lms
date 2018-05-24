@@ -26,7 +26,7 @@ class CustomMenu(Menu):
             items.Bookmarks(),
             items.AppList(
                 _('Administration'),
-                models=('django.contrib.*',)
+                models=('django.contrib.*', 'filer.*', )
             ),
             items.ModelList(
                 _('License Manager'),

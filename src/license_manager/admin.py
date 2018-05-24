@@ -63,7 +63,7 @@ class LicensedSoftwareInline(nested_admin.NestedStackedInline):
     inlines = [LicenseKeyInline]
 
 
-class LicenseImageInline(admin.TabularInline):
+class LicenseImageInline(nested_admin.NestedTabularInline):
     model = LicenseImage
     extra = 1
     verbose_name = 'image'
@@ -79,8 +79,8 @@ class PlatformAdmin(admin.ModelAdmin):
 class LicenseAdmin(nested_admin.NestedModelAdmin):
     save_as = True
     form = LicenseForm
-    # inlines = [LicensesSoftwareInline, LicenseImageInline]
-    inlines = [LicensedSoftwareInline]
+    inlines = [LicensedSoftwareInline, LicenseImageInline]
+    # inlines = [LicensedSoftwareInline]
     list_display = [
         'description', 'get_display_softwares',
         'license_number', 'total', 'linked_used_total', 'remaining',
