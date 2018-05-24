@@ -12,14 +12,12 @@ services:
   web:
     container_name: lms_web
     build: .
-    command: ["./bin/wait-for-it.sh", "lms_db:5432", "--", "bash", "./bin/run.sh"]
+    command: ["./bin/wait-for-it.sh", "db:5432", "--", "bash", "./bin/run.sh"]
     volumes:
       - ./src/:/code
       - ./static/:/static
       - ./media/:/media
       - ./smedia/:/smedia
-    ports:
-      - "8000:8000"
     environment:
       - ENV=docker
       - DEBUG
