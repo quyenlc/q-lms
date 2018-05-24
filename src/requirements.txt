@@ -3,11 +3,12 @@ django-autocomplete-light>=3.2.10
 django-admin-list-filter-dropdown>=1.0.1
 django-admin-tools>=0.8.1
 django-debug-toolbar
+django-filer
+django-nested-admin
+django-admin-view-permission
+social-auth-app-django
 google-auth
 google-auth-httplib2
 google-api-python-client
-social-auth-app-django
 psycopg2-binary
 gunicorn
-django-filer
-nested-admin
