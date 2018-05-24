@@ -1,16 +1,16 @@
-version: '2'
+version: '3'
 
 services:
   db:
+    container_name: lms_db
     image: postgres
     volumes:
       - ./db:/var/lib/postgresql/data
     environment:
       PGDATA: /var/lib/postgresql/data/pgdata
     restart: always
-    networks:
-      - localnet
   web:
+    container_name: lms_web
     build: .
     command: ["./bin/wait-for-it.sh", "db:5432", "--", "bash", "./bin/run.sh"]
     volumes:
@@ -24,28 +24,13 @@ services:
     depends_on:
       - "db"
     restart: always
-    networks:
-      - localnet
   proxy:
     image: nginx:latest
+    container_name: lms_proxy
     ports:
-      - "7005:8000"
+      - "8000:8000"
     volumes:
       - ./conf/nginx:/etc/nginx/conf.d
       - ./static:/static
     depends_on:
       - "web"
-    environment:
-      - VIRTUAL_HOST=lms.punch.local
-      - VIRTUAL_PORT=8000
-      - NETWORK_ACCESS=internal
-    networks:
-      - reverse-proxy
-      - localnet
-
-networks:
-  localnet:
-    driver: bridge
-  reverse-proxy:
-    external:
-      name: reverse-proxy
