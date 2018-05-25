@@ -305,9 +305,11 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
                                 duplicate = True
                                 skip = True
 
-                        # try to find a license key
                         if lic and not skip:
                             lic.remaining -= 1
+
+                        if lic and not skip_license_key:
+                            # try to find a license key
                             combined_pk = "{}_{}".format(sw.id, lic.id)
                             if combined_pk in license_keys and license_keys[combined_pk]:
                                 lic_key = license_keys[combined_pk][0]
