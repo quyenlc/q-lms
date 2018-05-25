@@ -101,6 +101,7 @@ class License(models.Model):
             This field is required for OEM license and will be ignored otherwise.''')
     supplier = models.ForeignKey('Supplier', blank=True, null=True, on_delete=models.PROTECT)
     license_number = models.CharField(max_length=100, blank=True)
+    management_website = models.URLField(blank=True)
     # max_device = models.PositiveIntegerField(default=1)
     purchased_date = models.DateField(blank=True, null=True)
     started_date = models.DateField(blank=True, null=True)

@@ -105,7 +105,7 @@ class LicenseAdmin(nested_admin.NestedModelAdmin):
                 'fields': basic_fieldset
             }),
             ('Additional infos', {
-                'fields': ('supplier', 'license_number')
+                'fields': ('supplier', 'license_number', 'management_url')
             }),
             ('Important dates', {
                 'fields': ('purchased_date', 'started_date', 'ended_date')
