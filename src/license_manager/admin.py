@@ -194,6 +194,7 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
         else:
             return None
     get_serial_key.short_description = "Serial Key"
+    get_serial_key.admin_order_field = 'license_key__serial_key'
 
     def get_urls(self):
         info = self.model._meta.app_label, self.model._meta.model_name
