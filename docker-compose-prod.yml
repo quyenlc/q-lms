@@ -36,9 +36,8 @@ services:
     depends_on:
       - "web"
     environment:
-      - VIRTUAL_HOST=lms.punch.local
+      - VIRTUAL_HOST=lms.punch.vn
       - VIRTUAL_PORT=8000
-      - NETWORK_ACCESS=internal
     networks:
       - reverse-proxy
       - localnet
