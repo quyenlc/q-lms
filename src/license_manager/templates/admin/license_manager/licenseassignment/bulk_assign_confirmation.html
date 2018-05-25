@@ -49,14 +49,14 @@
                         {% if assign.license %}
                         <td>{{ assign.license.description }}</td>
                         {% else %}
-                        <td><span style="color: red">N/A (Not enough license)</span></td>
+                        <td><span style="color: red">N/A</span></td>
                         {% endif %}
                         {% if assign.license_key %}
                         <td>{{ assign.license_key.serial_key }}</td>
                         {% else %}
                         <td><span style="color: red">N/A</span></td>
                         {% endif %}
-                        <td>{% if assign.skip %}<span style="color: red">Skip {% if assign.duplicate %}(Duplicate){% endif %}</span>{% else %}<span style="color: limegreen">OK {% if assign.pk %}(Update){% else %}(New){% endif %}</span>{% endif %}</td>
+                        <td>{% if assign.skip %}<span style="color: red">Skip {% if assign.duplicate %}(Duplicate){% else %}(Not enough license){% endif %}</span>{% else %}<span style="color: limegreen">OK {% if assign.pk %}(Update){% else %}(New){% endif %}</span>{% endif %}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
