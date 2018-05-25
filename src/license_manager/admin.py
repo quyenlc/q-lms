@@ -198,8 +198,8 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
 
     def can_view_license_key(self, request):
         app_label = self.model._meta.app_label
-        view_key_perm = '%s.view_license_key' % app_label
-        change_key_perm = '%s.change_license_key' % app_label
+        view_key_perm = '%s.view_licensekey' % app_label
+        change_key_perm = '%s.change_licensekey' % app_label
         return (request.user.has_perm(view_key_perm) or
                 request.user.has_perm(change_key_perm))
 
