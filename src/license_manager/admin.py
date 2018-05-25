@@ -86,7 +86,6 @@ class LicenseAdmin(nested_admin.NestedModelAdmin):
         'license_number', 'total', 'linked_used_total', 'remaining',
         'supplier', 'purchased_date', 'started_date', 'ended_date']
     list_select_related = ['supplier']
-    exclude = ['description']
     readonly_fields = ['description', 'used_total']
     list_filter = (
         ('software_family', RelatedDropdownFilter),
