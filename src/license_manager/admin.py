@@ -332,16 +332,20 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
                             license = assignment['license']
                             license_key = assignment['license_key']
                             kwargs = {
+                                'pk': assignment['pk'],
                                 'user_id': assignment['user'].pk,
                                 'software_id': assignment['software'].pk,
                                 'platform_id': platform.pk,
                                 'license_id': license.pk if license else None,
                                 'license_key_id': license_key.pk if license_key else None
                             }
-                            if assignment['pk']:
-                                kwargs['pk'] = assignment['pk']
                             obj = LicenseAssignment(**kwargs)
                             obj.save()
+                            log_message = "Assigned a %s license for %s via bulk assign" % (assignment['software'].get_full_name(), assignment['user'].username)
+                            if assignment['pk']:
+                                self.log_change(request, obj, log_message)
+                            else:
+                                self.log_addition(request, obj, log_message)
                     post_url = reverse(
                         'admin:%s_%s_changelist' % (opts.app_label, opts.model_name),
                         current_app=self.admin_site.name,
