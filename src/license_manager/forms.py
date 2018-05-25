@@ -127,6 +127,9 @@ class LicenseAssignmentForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super(LicenseAssignmentForm, self).__init__(*args, **kwargs)
+        # in case user has only view permission
+        if not self.fields:
+            return
         license_widget = self.fields['license'].widget.widget
         license_key_widget = self.fields['license_key'].widget.widget
         license_forward = ['software', 'platform']

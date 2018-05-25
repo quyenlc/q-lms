@@ -163,7 +163,6 @@ class LicenseAdmin(nested_admin.NestedModelAdmin):
 
 class LicenseAssignmentAdmin(admin.ModelAdmin):
     form = LicenseAssignmentForm
-    list_display = ['id', 'user', 'software', 'platform', 'linked_license', 'get_serial_key']
     list_select_related = ['user', 'software', 'platform', 'license', 'license_key', 'software__software_family']
     list_filter = (
         ('user', RelatedDropdownFilter),
@@ -196,6 +195,25 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
             return None
     get_serial_key.short_description = "Serial Key"
     get_serial_key.admin_order_field = 'license_key__serial_key'
+
+    def can_view_license_key(self, request):
+        app_label = self.model._meta.app_label
+        view_key_perm = '%s.view_license_key' % app_label
+        change_key_perm = '%s.change_license_key' % app_label
+        return (request.user.has_perm(view_key_perm) or
+                request.user.has_perm(change_key_perm))
+
+    def get_list_display(self, request):
+        list_display = ['id', 'user', 'software', 'platform', 'linked_license']
+        if self.can_view_license_key(request):
+            list_display.append('get_serial_key')
+        return list_display
+
+    def get_readonly_fields(self, request, obj):
+        fields = super(LicenseAssignmentAdmin, self).get_readonly_fields(request, obj)
+        if fields and 'license_key' in fields and not self.can_view_license_key(request):
+            fields = tuple(f for f in fields if f != 'license_key')
+        return fields
 
     def get_urls(self):
         info = self.model._meta.app_label, self.model._meta.model_name
