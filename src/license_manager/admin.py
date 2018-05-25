@@ -305,6 +305,7 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
                                 assignment_pk = existing_assignment.pk
                             elif avoid_duplicates:
                                 # otherwise we should skip to avoid duplicate records
+                                lic = None
                                 duplicate = True
                                 skip = True
 
