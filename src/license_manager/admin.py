@@ -256,11 +256,7 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
         opts = self.model._meta
         title = 'Bulk assign licenses'
         if request.method != 'POST':
-            form = LicenseBulkAssignForm(initial={
-                    'avoid_duplicates': True,
-                    'skip_not_enough': True
-                }
-            )
+            form = LicenseBulkAssignForm()
         else:
             form = LicenseBulkAssignForm(request.POST)
             if form.is_valid():

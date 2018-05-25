@@ -254,9 +254,11 @@ class LicenseBulkAssignForm(forms.Form):
     )
 
     avoid_duplicates = forms.BooleanField(
+        initial=True, required=False,
         label='Avoid duplicates',
         help_text='Avoid assign a software on a platform for a user multiple times.')
     skip_not_enough = forms.BooleanField(
+        initial=True, required=False,
         label='Skip if not enough license',
         help_text='If a software runs out of license, don\'t assign that software to users.')
 
