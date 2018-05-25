@@ -369,6 +369,7 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
                         'title': title,
                         'users': form.cleaned_data['users'],
                         'softwares': form.cleaned_data['softwares'],
+                        'licenses': form.cleaned_data['licenses'],
                         'skip_license_key': skip_license_key,
                         'avoid_duplicates': avoid_duplicates,
                         'skip_not_enough': skip_not_enough,
