@@ -207,7 +207,7 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
             del actions['delete_selected']
         return actions
 
-    def get_lookup_tables(self, softwares, platform):
+    def get_lookup_tables(self, platform, softwares, licenses):
         """Create lookup tables for looking up licenses and license keys for
         a software if knew its id.
         """
@@ -215,11 +215,14 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
         license_lut = {}
         license_key_lut = {}
         # relations between software and license
+        query = Q(software__in=softwares, remaining__gt=0)
+        if licenses:
+            query &= Q(license__in=licenses)
         rels = (
             LicensedSoftware.objects
             .select_related('license')
             .annotate(remaining=F('license__total') - F('license__used_total'))
-            .filter(software__in=softwares, remaining__gt=0)
+            .filter(query)
             .exclude(license__license_type=License.LICENSE_OEM)
             .order_by('remaining')
         )
@@ -260,12 +263,14 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
         else:
             form = LicenseBulkAssignForm(request.POST)
             if form.is_valid():
+                skip_license_key = form.cleaned_data['skip_license_key']
                 skip_not_enough = form.cleaned_data['skip_not_enough']
                 avoid_duplicates = form.cleaned_data['avoid_duplicates']
                 softwares = form.cleaned_data['softwares']
                 platform = form.cleaned_data['platform']
+                licenses = form.cleaned_data['licenses']
 
-                maps, licenses, license_keys = self.get_lookup_tables(softwares, platform)
+                maps, licenses, license_keys = self.get_lookup_tables(platform, softwares, licenses)
                 assignments = []
                 for user in form.cleaned_data['users']:
                     for sw in softwares:
@@ -364,6 +369,7 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
                         'title': title,
                         'users': form.cleaned_data['users'],
                         'softwares': form.cleaned_data['softwares'],
+                        'skip_license_key': skip_license_key,
                         'avoid_duplicates': avoid_duplicates,
                         'skip_not_enough': skip_not_enough,
                         'platform': platform,
@@ -382,7 +388,10 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
             form=form,
             fieldsets=[
                 (None, {
-                    'fields': ('users', 'platform', 'softwares', 'avoid_duplicates', 'skip_not_enough')
+                    'fields': (
+                        'users', 'platform', 'softwares', 'licenses',
+                        'skip_license_key', 'avoid_duplicates', 'skip_not_enough'
+                    )
                 }),
             ],
             prepopulated_fields={},

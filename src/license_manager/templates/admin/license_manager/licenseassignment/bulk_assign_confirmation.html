@@ -54,7 +54,7 @@
                         {% if assign.license_key %}
                         <td>{{ assign.license_key.serial_key }}</td>
                         {% else %}
-                        <td><span style="color: red">N/A</span></td>
+                        <td><span style="color: red">N/A {% if skip_license_key %}(Skipped){% endif %}</span></td>
                         {% endif %}
                         <td>{% if assign.skip %}<span style="color: red">Skip {% if assign.duplicate %}(Duplicate){% else %}(Not enough license){% endif %}</span>{% else %}<span style="color: limegreen">OK {% if assign.pk %}(Update){% else %}(New){% endif %}</span>{% endif %}</td>
                     </tr>
@@ -72,7 +72,11 @@
                 {% for software in softwares %}
                 <input type="hidden" name="softwares" value="{{ software.pk }}" />
                 {% endfor %}
+                {% for license in licenses %}
+                <input type="hidden" name="licenses" value="{{ license.pk }}" />
+                {% endfor %}
                 <input type="hidden" name="platform" value="{{ platform.pk }}" />
+                <input type="hidden" name="skip_license_key" value="{{ skip_license_key }}" />
                 <input type="hidden" name="avoid_duplicates" value="{{ avoid_duplicates }}" />
                 <input type="hidden" name="skip_not_enough" value="{{ skip_not_enough }}" />
                 <input type="hidden" name="_confirmed" />

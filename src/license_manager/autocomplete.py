@@ -13,10 +13,16 @@ class LicenseAutocomplete(autocomplete.Select2QuerySetView):
         if not self.request.user.is_authenticated:
             return License.objects.none()
         software_id = self.forwarded.get('software', None)
+        software_ids = self.forwarded.get('softwares', None)
+        if software_ids and software_id not in software_ids:
+            software_ids.append(software_id)
+        if not software_ids:
+            software_ids = [software_id]
+
         platform_id = self.forwarded.get('platform', None)
         license_id = self.forwarded.get('license', None)
-        if software_id and platform_id and Software.objects.filter(pk=software_id, platforms=platform_id).exists():
-            f = Q(softwares=software_id)
+        if software_ids and platform_id and Software.objects.filter(pk__in=software_ids, platforms=platform_id).exists():
+            f = Q(softwares__in=software_ids)
             sub_f = Q(remaining__gt=0)
             if license_id:
                 sub_f |= Q(pk=license_id)

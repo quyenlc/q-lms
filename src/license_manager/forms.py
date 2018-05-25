@@ -252,7 +252,23 @@ class LicenseBulkAssignForm(forms.Form):
             }
         )
     )
+    licenses = forms.ModelMultipleChoiceField(
+        required=False,
+        queryset=License.objects.all(),
+        widget=autocomplete.ModelSelect2Multiple(
+            url="license_autocomplete",
+            forward=['platform', 'softwares'],
+            attrs={
+                'data-html': True,
+                'data-placeholder': 'Select one or more licenses',
+            }
+        )
+    )
 
+    skip_license_key = forms.BooleanField(
+        initial=False, required=False,
+        label='Skip assign license key'
+    )
     avoid_duplicates = forms.BooleanField(
         initial=True, required=False,
         label='Avoid duplicates',
