@@ -136,13 +136,17 @@ class LicenseAdmin(nested_admin.NestedModelAdmin):
     get_display_softwares.allow_tags = True
 
     def remaining(self, obj):
-        return obj.remaining
+        color = 'limegreen'
+        if obj.remaining == 0:
+            color = 'red'
+        return format_html('<strong style="color: {}">{}</strong>'.format(color, obj.remaining))
     remaining.admin_order_field = 'remaining'
 
     def linked_used_total(self, obj):
-        if obj.used_total == 0:
-            return 0
         color = 'limegreen'
+        text = ''
+        if obj.used_total == 0:
+            text = '<strong style="color: {}">0</strong>'.format(color)
         if obj.used_total == obj.total:
             color = 'red'
         opts = obj._meta
@@ -151,10 +155,8 @@ class LicenseAdmin(nested_admin.NestedModelAdmin):
             (opts.app_label, 'licenseassignment')
         )
         url += '?license__id__exact=%d' % obj.pk
-        return format_html(
-            '<a href="{}" style="color: {}" title="Click here to see the users using this license."><strong>{}</strong></a>',
-            url, color, obj.used_total
-        )
+        text = '<a href="{}" style="color: {}" title="Click here to see the users using this license."><strong>{}</strong></a>'
+        return format_html(text, url, color, obj.used_total)
     linked_used_total.short_description = 'used total'
     linked_used_total.admin_order_field = 'used_total'
 
