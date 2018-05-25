@@ -91,6 +91,7 @@ class LicenseAdmin(nested_admin.NestedModelAdmin):
         ('software_family', RelatedDropdownFilter),
         'license_type', 'ended_date', 'started_date',
     )
+    search_fields = ['description']
     autocomplete_fields = ['supplier', 'software_family']
 
     def get_fieldsets(self, request, obj):
@@ -171,6 +172,7 @@ class LicenseAssignmentAdmin(admin.ModelAdmin):
         ('license', RelatedDropdownFilter),
         ('platform', RelatedDropdownFilter),
     )
+    search_fields = ['user__username', 'software__name', 'license__description', 'license_key__serial_key']
     ordering = ('user__username',)
     actions = [delete_license_assignments]
 
