@@ -31,6 +31,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'asset_manager',
     'license_manager',
     'nested_admin',
     'easy_thumbnails',

@@ -29,6 +29,18 @@ class CustomMenu(Menu):
                 models=('django.contrib.*', 'filer.*', )
             ),
             items.ModelList(
+                _('Asset Manager'),
+                (
+                    'asset_manager.models.Asset',
+                    'asset_manager.models.Exchange',
+                    'asset_manager.models.Office',
+                    'asset_manager.models.Location',
+                    'asset_manager.models.Manufacturer',
+                    'asset_manager.models.Supplier',
+                    'asset_manager.models.Type',
+                ),
+            ),
+            items.ModelList(
                 _('License Manager'),
                 (
                     'license_manager.models.License',

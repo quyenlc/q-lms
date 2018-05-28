@@ -42,6 +42,14 @@ class CustomIndexDashboard(Dashboard):
         ))
 
         self.children.append(modules.ModelList(
+            _('Asset Manager'),
+            (
+                'asset_manager.models.Asset',
+                'asset_manager.models.Exchange',
+            ),
+        ))
+
+        self.children.append(modules.ModelList(
             _('License Manager'),
             (
                 'license_manager.models.License',
