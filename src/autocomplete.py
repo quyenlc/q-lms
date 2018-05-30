@@ -1,10 +1,10 @@
-from django.db.models import F, Q
+from django.db.models import Q
 from django.utils.html import format_html
 from django.contrib.auth.models import User
 
 from dal import autocomplete
 
-from .models import Software, Platform, License, LicenseKey
+from license_manager.models import Software, Platform, License, LicenseKey
 
 
 class LicenseAutocomplete(autocomplete.Select2QuerySetView):
