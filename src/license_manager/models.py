@@ -177,8 +177,8 @@ class License(models.Model):
 
 
 class LicenseImage(models.Model):
-    image = FilerImageField()
-    license = models.ForeignKey('License')
+    image = FilerImageField(on_delete=models.CASCADE)
+    license = models.ForeignKey('License', on_delete=models.CASCADE)
 
     def __str__(self):
         return "Image ID: %d" % (self.image_id)
